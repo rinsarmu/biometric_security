@@ -1,0 +1,114 @@
+import CryptoKit
+import Foundation
+import LocalAuthentication
+
+/// Implements `authenticate()` with the strongest practical mechanism.
+///
+/// When a Secure Enclave is present, it uses a biometric-gated Secure Enclave
+/// P-256 signing key and proves authentication by signing a constant (INV-1: the
+/// key is physically unusable without a successful biometric evaluation, so a
+/// forged "success" cannot produce a valid signature). The key's persisted
+/// `dataRepresentation` is a Secure-Enclave-wrapped blob — the private key never
+/// leaves the Enclave and is never exposed to Dart (INV-2).
+///
+/// On devices without a Secure Enclave (e.g. the simulator), it falls back to a
+/// LocalAuthentication policy evaluation, which is a weaker presence check — this
+/// is documented rather than pretended away.
+final class SecureEnclaveAuth {
+
+    private let store: KeychainStore
+    private static let proof = Data("biometric_security.auth".utf8)
+
+    init(store: KeychainStore) {
+        self.store = store
+    }
+
+    /// Runs the prompt and returns the Dart `AuthSession` map. Blocks the calling
+    /// thread on biometric UI, so it must be called off the main thread.
+    func authenticate(scope: String, policy: PolicyConfig, reason: String) throws
+        -> [String: Any?]
+    {
+        if SecureEnclave.isAvailable {
+            return try secureEnclaveSign(scope: scope, policy: policy, reason: reason)
+        }
+        return try localAuthFallback(policy: policy, reason: reason)
+    }
+
+    /// Removes a scope's Secure Enclave key blob so it can be reprovisioned.
+    func reset(scope: String) {
+        store.removeRaw(account: keyAccount(scope))
+    }
+
+    // MARK: - Secure Enclave path
+
+    private func secureEnclaveSign(scope: String, policy: PolicyConfig, reason: String)
+        throws -> [String: Any?]
+    {
+        let context = LAContext()
+        context.localizedReason = reason
+
+        do {
+            let key = try loadOrCreateKey(scope: scope, policy: policy, context: context)
+            let signature = try key.signature(for: Self.proof)
+            return [
+                "token": signature.rawRepresentation.base64EncodedString(),
+                "authenticatedAtMs": Int(Date().timeIntervalSince1970 * 1000),
+                // iOS does not report which modality performed the match.
+                "usedModality": nil,
+                "securityLevel": "secureEnclave",
+            ]
+        } catch let error as PluginError {
+            throw error
+        } catch {
+            throw ErrorMapper.fromAuthError(error)
+        }
+    }
+
+    private func loadOrCreateKey(
+        scope: String, policy: PolicyConfig, context: LAContext
+    ) throws -> SecureEnclave.P256.Signing.PrivateKey {
+        if let blob = try store.getRaw(account: keyAccount(scope), context: nil) {
+            return try SecureEnclave.P256.Signing.PrivateKey(
+                dataRepresentation: blob, authenticationContext: context)
+        }
+        let access = try policy.makeAccessControl(privateKeyUsage: true)
+        let key = try SecureEnclave.P256.Signing.PrivateKey(
+            accessControl: access, authenticationContext: context)
+        // The blob is Secure-Enclave-wrapped and safe to persist in the Keychain.
+        try store.addRaw(
+            account: keyAccount(scope), data: key.dataRepresentation,
+            accessControl: nil, accessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+        return key
+    }
+
+    // MARK: - Fallback (no Secure Enclave)
+
+    private func localAuthFallback(policy: PolicyConfig, reason: String) throws
+        -> [String: Any?]
+    {
+        let context = LAContext()
+        let laPolicy: LAPolicy =
+            policy.deviceCredentialFallback
+            ? .deviceOwnerAuthentication : .deviceOwnerAuthenticationWithBiometrics
+
+        var evalError: Error?
+        let semaphore = DispatchSemaphore(value: 0)
+        context.evaluatePolicy(laPolicy, localizedReason: reason) { success, error in
+            if !success { evalError = error }
+            semaphore.signal()
+        }
+        semaphore.wait()
+
+        if let evalError = evalError {
+            throw ErrorMapper.fromAuthError(evalError)
+        }
+        return [
+            "token": "presence",
+            "authenticatedAtMs": Int(Date().timeIntervalSince1970 * 1000),
+            "usedModality": nil,
+            "securityLevel": "software",
+        ]
+    }
+
+    private func keyAccount(_ scope: String) -> String { "se:\(scope)" }
+}

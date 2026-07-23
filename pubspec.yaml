@@ -1,0 +1,32 @@
+name: biometric_security
+description: "A unified biometric security layer for Flutter: biometric authentication, hardware-backed key management, and biometric-gated encrypted storage."
+version: 0.0.1
+homepage:
+publish_to: none
+
+environment:
+  sdk: ^3.9.2
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  plugin_platform_interface: ^2.1.8
+  # Well-established authenticated encryption (AES-GCM) for the software data
+  # layer only. Hardware keys never pass through it (RESEARCH.md §2.5, INV-2).
+  cryptography: ^2.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+# The following section is specific to Flutter plugins.
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.example.biometric_security
+        pluginClass: BiometricSecurityPlugin
+      ios:
+        pluginClass: BiometricSecurityPlugin
