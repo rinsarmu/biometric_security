@@ -8,14 +8,17 @@ void main() {
 }
 
 // ---------------------------------------------------------------------------
-// Pure, unit-testable interpretation helpers (see example/test/).
-// These contain the only *new* Dart-level enrollment logic in this example;
-// the actual enrollment-change detection lives in the native layer and can only
-// be exercised on a physical device.
+// Example-only constants and pure, unit-testable helpers (see example/test/).
+// The test PIN lives ONLY in the example app, never in the package.
 // ---------------------------------------------------------------------------
 
-/// The observable state of a biometric-protected secret, derived from the
-/// outcome of a `read()`.
+/// TEST-ONLY correct PIN for this demo. Never ship a hardcoded PIN.
+const String kTestPin = '123654';
+
+/// The logical key under which the biometric-protected login PIN is stored.
+const SecretKey kLoginPinKey = SecretKey('biometric_login_pin');
+
+/// The observable state of a biometric-protected secret, derived from a `read()`.
 enum ProtectedKeyState { unknown, valid, invalidated, absent, error }
 
 /// Classifies the state of a protected key from an exception thrown by `read()`.
@@ -41,9 +44,7 @@ class ExampleApp extends StatelessWidget {
   const ExampleApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(home: HomePage());
-  }
+  Widget build(BuildContext context) => const MaterialApp(home: HomePage());
 }
 
 class HomePage extends StatefulWidget {
@@ -55,16 +56,15 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final BiometricSecurity _security = BiometricSecurity();
-  static const _pin = SecretKey('demo_payment_pin');
 
-  String _status = 'Not initialized';
-  String _log = '';
+  bool _initialized = false;
   BiometricAvailability? _availability;
   SecurityStatus? _securityStatus;
 
+  bool _loginEnabled = false;
   ProtectedKeyState _keyState = ProtectedKeyState.unknown;
-  bool? _pinAccessible;
-  String _enrollmentChanged = 'Not tested yet';
+  String? _lastRetrievedPin;
+  String _log = '';
 
   @override
   void initState() {
@@ -75,123 +75,257 @@ class _HomePageState extends State<HomePage> {
   Future<void> _init() async {
     try {
       await _security.initialize();
-      await _checkEnrollment();
-      if (mounted) setState(() => _status = 'Initialized');
+      _initialized = true;
+      await _refreshState();
     } catch (e) {
-      if (mounted) setState(() => _status = 'Init error: $e');
+      _append('Init error: $e');
     }
   }
 
-  void _append(String line) => setState(() => _log = '$line\n$_log');
-
-  Future<void> _run(String label, Future<void> Function() action) async {
-    try {
-      await action();
-      _append('✓ $label');
-    } on BiometricSecurityException catch (e) {
-      _append('✗ $label → ${e.runtimeType}: ${e.message}');
-    }
+  void _append(String line) {
+    if (mounted) setState(() => _log = '$line\n$_log');
   }
 
-  // --- Actions (all use the real package API) ---
-
-  Future<void> _checkEnrollment() async {
+  Future<void> _refreshState() async {
+    if (!_initialized) return;
     final a = await _security.getAvailability();
+    final enabled = await _security.contains(key: kLoginPinKey);
     if (!mounted) return;
-    setState(() => _availability = a);
-    _append('Enrollment: ${enrollmentSummary(a)}');
+    setState(() {
+      _availability = a;
+      _loginEnabled = enabled;
+    });
   }
 
-  Future<void> _checkSecurityStatus() =>
-      _run('check security status', () async {
-        final s = await _security.getSecurityStatus();
-        setState(() => _securityStatus = s);
-      });
+  // ------------------------------------------------------------------------
+  // UC1 — Enable biometric login (validate PIN in-app, then protect it)
+  // ------------------------------------------------------------------------
 
-  Future<void> _storePin() => _run('store biometric-protected PIN', () async {
-    await _security.write(
-      key: _pin,
-      value: '4321',
-      policy: SecurityPolicy.strong(),
-      reason: 'Confirm to save your PIN',
-    );
-    setState(() {
-      _keyState = ProtectedKeyState.valid;
-      _pinAccessible = null; // not yet verified by a read
-      _enrollmentChanged = 'reset (freshly stored)';
-    });
-  });
+  Future<void> _enableBiometricLogin() async {
+    final entered = await _askPin();
+    if (entered == null) return; // sheet dismissed
 
-  Future<void> _readPin() async {
+    // Test 2: wrong PIN — reject, enable nothing, store nothing.
+    if (entered != kTestPin) {
+      _append(
+        '✗ PIN incorrect. Biometric login remains disabled. Nothing stored.',
+      );
+      await _refreshState();
+      return;
+    }
+
     try {
-      final value = await _security.read(key: _pin, reason: 'Unlock your PIN');
-      if (!mounted) return;
+      // iOS: a gated Keychain *write* does not prompt, so we explicitly
+      // authenticate first to show the prompt during enable. Android's gated
+      // write already prompts, so we skip the extra prompt there.
+      if (Platform.isIOS) {
+        await _security.authenticate(
+          reason: 'Confirm to enable biometric login',
+        );
+      }
+      await _security.write(
+        key: kLoginPinKey,
+        value: entered,
+        policy: SecurityPolicy.strong(),
+        reason: 'Enable biometric login',
+      );
       setState(() {
-        if (value == null) {
-          _keyState = ProtectedKeyState.absent;
-          _pinAccessible = false;
-          _enrollmentChanged = 'n/a (no PIN stored)';
-        } else {
-          _keyState = ProtectedKeyState.valid;
-          _pinAccessible = true;
-          _enrollmentChanged = 'No — read succeeded, key still valid';
-        }
+        _loginEnabled = true;
+        _keyState = ProtectedKeyState.valid;
       });
-      _append(value == null ? 'read → (absent)' : 'read → $value');
-    } on KeyInvalidatedException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _keyState = ProtectedKeyState.invalidated;
-        _pinAccessible = false;
-        _enrollmentChanged = 'YES — key invalidated (enrolled set changed)';
-      });
-      _append('✗ read → KeyInvalidatedException: ${e.message}');
+      _append('✓ Biometric login enabled. PIN securely protected.');
+    } on BiometricAuthCanceledException {
+      _append(
+        '✗ Enable canceled. Biometric login not enabled; nothing stored.',
+      );
     } on BiometricSecurityException catch (e) {
-      if (!mounted) return;
-      setState(() => _keyState = keyStateForError(e));
-      _append('✗ read → ${e.runtimeType}: ${e.message}');
+      _append('✗ Enable failed → ${e.runtimeType}: ${e.message}');
+    }
+    await _refreshState();
+  }
+
+  Future<void> _disableBiometricLogin() async {
+    try {
+      await _security.revoke(key: kLoginPinKey);
+      setState(() {
+        _loginEnabled = false;
+        _keyState = ProtectedKeyState.absent;
+        _lastRetrievedPin = null;
+      });
+      _append('✓ Biometric login disabled and revoked.');
+    } on BiometricSecurityException catch (e) {
+      _append('✗ Disable failed → ${e.message}');
     }
   }
 
-  Future<void> _revokePin() => _run('revoke protected PIN', () async {
-    await _security.revoke(key: _pin);
-    setState(() {
-      _keyState = ProtectedKeyState.absent;
-      _pinAccessible = false;
-      _enrollmentChanged = 'n/a (revoked)';
-    });
-  });
+  // ------------------------------------------------------------------------
+  // UC2 — Biometric login (check state → authenticate → retrieve PIN)
+  // ------------------------------------------------------------------------
 
-  Future<void> _resetInvalidated() => _run('reset invalidated key', () async {
-    await _security.resetInvalidated();
-    setState(() => _keyState = ProtectedKeyState.unknown);
-    _append('Cleared dead key material — re-store the PIN to recover.');
-  });
+  Future<void> _loginWithBiometrics() async {
+    if (!await _security.contains(key: kLoginPinKey)) {
+      _append('✗ Biometric login is not enabled. Enable it first.');
+      return;
+    }
+    final a = await _security.getAvailability();
+    if (!a.canAuthenticate) {
+      _append('✗ Biometric login cannot proceed — reason: ${a.status.name}.');
+      return;
+    }
 
-  // --- UI ---
+    try {
+      // read() checks key validity FIRST (throws before prompting if
+      // invalidated), then prompts, then returns the protected PIN.
+      final pin = await _security.read(
+        key: kLoginPinKey,
+        reason: 'Log in with biometrics',
+      );
+      if (!mounted) return;
+      if (pin == null) {
+        setState(() {
+          _loginEnabled = false;
+          _keyState = ProtectedKeyState.absent;
+        });
+        _append(
+          '✗ Login: no protected PIN found. Enable biometric login first.',
+        );
+        return;
+      }
+      setState(() {
+        _keyState = ProtectedKeyState.valid;
+        _lastRetrievedPin = pin;
+      });
+      _append(
+        '✓ Authentication successful. Retrieved PIN: $pin  (TEST-ONLY display)',
+      );
+    } on KeyInvalidatedException catch (e) {
+      // Security event: enrollment/key changed → do NOT retrieve, revoke login.
+      _append(
+        '✗ Biometric login INVALIDATED (enrollment/key changed): ${e.message}',
+      );
+      await _security.revoke(key: kLoginPinKey);
+      if (!mounted) return;
+      setState(() {
+        _loginEnabled = false;
+        _keyState = ProtectedKeyState.invalidated;
+        _lastRetrievedPin = null;
+      });
+      _append(
+        '  → Biometric login disabled. Please enable it again with your PIN.',
+      );
+    } on BiometricAuthCanceledException {
+      _append('✗ Login canceled by user.');
+    } on BiometricSecurityException catch (e) {
+      setState(() => _keyState = keyStateForError(e));
+      _append('✗ Login failed → ${e.runtimeType}: ${e.message}');
+    }
+    await _refreshState();
+  }
+
+  // ------------------------------------------------------------------------
+  // UC3 — Normal authentication (never touches the PIN)
+  // ------------------------------------------------------------------------
+
+  Future<void> _normalAuthenticate() async {
+    final a = await _security.getAvailability();
+    if (!a.canAuthenticate) {
+      _append('✗ Cannot authenticate — reason: ${a.status.name}.');
+      return;
+    }
+    try {
+      final session = await _security.authenticate(
+        reason: 'Verify your identity',
+      );
+      _append(
+        '✓ Authentication successful (presence verified, level='
+        '${session.securityLevel.name}). PIN was NOT accessed.',
+      );
+    } on BiometricAuthCanceledException {
+      _append('✗ Authentication canceled.');
+    } on BiometricSecurityException catch (e) {
+      _append('✗ Authentication failed → ${e.runtimeType}: ${e.message}');
+    }
+  }
+
+  Future<void> _checkSecurityStatus() async {
+    try {
+      final s = await _security.getSecurityStatus();
+      if (mounted) setState(() => _securityStatus = s);
+      _append('Security status refreshed.');
+    } on BiometricSecurityException catch (e) {
+      _append('✗ Security status → ${e.message}');
+    }
+  }
+
+  Future<String?> _askPin() async {
+    final controller = TextEditingController();
+    return showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Enter your PIN',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            const Text('(test PIN: 123654)', style: TextStyle(fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              autofocus: true,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'PIN',
+              ),
+              onSubmitted: (v) => Navigator.of(ctx).pop(v),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(controller.text),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------------
+  // UI
+  // ------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('biometric_security example')),
+      appBar: AppBar(title: const Text('Biometric Security Demo')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'Status: $_status',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-
-          
-          const SizedBox(height: 12),
           _availabilityCard(),
           const SizedBox(height: 12),
-          _enrollmentCard(),
+          _loginCard(),
           const SizedBox(height: 12),
-          _instructionsCard(),
+          _normalAuthCard(),
           const SizedBox(height: 12),
-          const Text('Log:', style: TextStyle(fontWeight: FontWeight.bold)),
-          Text(_log, style: const TextStyle(fontFamily: 'monospace')),
+          _securityStatusCard(),
+          const SizedBox(height: 12),
+          _retrievedPinCard(),
+          const SizedBox(height: 12),
+          _card('Logs', [
+            Text(_log, style: const TextStyle(fontFamily: 'monospace')),
+          ]),
         ],
       ),
     );
@@ -199,122 +333,102 @@ class _HomePageState extends State<HomePage> {
 
   Widget _availabilityCard() {
     final a = _availability;
-    return _card('Availability', [
+    return _card('Biometric Availability', [
       if (a == null)
-        const Text('—')
+        const Text('Checking…')
       else ...[
-        _row('Supported', a.supportedModalities.toString()),
+        _row('Supported', a.isSupported ? 'Yes' : 'No'),
+        _row('Available', a.canAuthenticate ? 'Yes' : 'No'),
+        _row('Enrolled', _enrolledText(a)),
         _row('Strength', a.strength.name),
-        _row('Can authenticate', a.canAuthenticate.toString()),
         _row('Status', a.status.name),
-        _row('Has StrongBox', a.hasStrongBox.toString()),
-        _row('Has Secure Enclave', a.hasSecureEnclave.toString()),
-        _row(
-          'Can force modality',
-          a.guarantees.canForceSpecificModality.toString(),
-        ),
       ],
+      const SizedBox(height: 8),
+      _btn('Refresh Availability', () async {
+        await _refreshState();
+        _append('Availability: ${a == null ? '' : enrollmentSummary(a)}');
+      }),
     ]);
   }
 
-  Widget _enrollmentCard() {
-    final s = _securityStatus;
-    return _card('Biometric Enrollment', [
-      _row(
-        'Enrollment status',
-        _availability == null ? '—' : _availability!.status.name,
-      ),
-      _row('Enrollment changed', _enrollmentChanged),
-      _row('Secure key valid', _keyValidityText()),
-      _row(
-        'Protected PIN accessible',
-        _pinAccessible == null ? 'Unknown (read to verify)' : '$_pinAccessible',
-      ),
-      _row(
-        'Security status',
-        s == null
-            ? 'Unknown (tap "Check Security Status")'
-            : 'level=${s.achievableSecurityLevel.name}, '
-                  'reprovision=${s.reprovisionRequired}, '
-                  'integrityRisk=${s.integrityRisk}',
+  String _enrolledText(BiometricAvailability a) {
+    if (a.enrolledModalities.isNotEmpty) {
+      return a.enrolledModalities.map((m) => m.name).join(', ');
+    }
+    // Android can't enumerate; infer from status/strength.
+    if (a.status == BiometricStatus.ready) return 'Yes (not enumerated)';
+    if (a.status == BiometricStatus.notEnrolled) return 'No';
+    return a.status.name;
+  }
+
+  Widget _loginCard() {
+    return _card('Biometric Login', [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Enable Biometric Login'),
+        subtitle: Text(_loginEnabled ? 'ON' : 'OFF'),
+        value: _loginEnabled,
+        onChanged: (v) =>
+            v ? _enableBiometricLogin() : _disableBiometricLogin(),
       ),
       const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          _btn(
-            'Check Enrollment',
-            () => _run('check enrollment', _checkEnrollment),
-          ),
-          _btn('Check Security Status', _checkSecurityStatus),
-          _btn('Store Biometric-Protected PIN', _storePin),
-          _btn('Read Protected PIN', _readPin),
-          _btn('Revoke Protected PIN', _revokePin),
-          _btn('Reset Invalidated Key', _resetInvalidated),
-        ],
+      _btn('🔐 Login with Biometrics', _loginWithBiometrics),
+    ]);
+  }
+
+  Widget _normalAuthCard() {
+    return _card('Normal Authentication', [
+      const Text('Proves the user is present. Does NOT read or write the PIN.'),
+      const SizedBox(height: 8),
+      _btn('Authenticate', _normalAuthenticate),
+    ]);
+  }
+
+  Widget _securityStatusCard() {
+    final s = _securityStatus;
+    return _card('Security Status', [
+      _row('Biometric Login', _loginEnabled ? 'Enabled' : 'Disabled'),
+      _row(
+        'Enrollment',
+        _availability == null ? '—' : _availability!.status.name,
       ),
+      _row('Key', _keyValidityText()),
+      if (s != null) ...[
+        _row('Achievable level', s.achievableSecurityLevel.name),
+        _row('Reprovision required', s.reprovisionRequired.toString()),
+        _row('Integrity risk', s.integrityRisk.toString()),
+      ],
+      const SizedBox(height: 8),
+      _btn('Check Security Status', _checkSecurityStatus),
     ]);
   }
 
   String _keyValidityText() {
     switch (_keyState) {
       case ProtectedKeyState.valid:
-        return 'Valid';
+        return 'Valid (verified at last login)';
       case ProtectedKeyState.invalidated:
-        return 'INVALIDATED';
+        return 'INVALIDATED — re-enable required';
       case ProtectedKeyState.absent:
         return 'No key stored';
       case ProtectedKeyState.error:
         return 'Error / unavailable';
       case ProtectedKeyState.unknown:
-        return 'Unknown (read to verify)';
+        return 'Unknown — log in to verify';
     }
   }
 
-  Widget _instructionsCard() {
-    final isIOS = Platform.isIOS;
-    final isAndroid = Platform.isAndroid;
-    final platformNote = isIOS
-        ? '• iOS: with the default policy the item is bound to the *current* '
-              'biometric set (biometryCurrentSet). Adding OR removing a Face ID / '
-              'Touch ID enrollment makes it inaccessible. The invalidation is '
-              'detected on the next read WITHOUT a prompt.'
-        : isAndroid
-        ? '• Android: with the default policy the Keystore key is invalidated '
-              'when a NEW biometric is enrolled (setInvalidatedByBiometricEnrollment). '
-              'The next read throws before any prompt is shown.'
-        : '• Run on a physical Android or iOS device to observe real behavior.';
-
-    return _card('Enrollment Change Test (manual, physical device)', [
+  Widget _retrievedPinCard() {
+    return _card('Last Retrieved PIN (TEST ONLY)', [
       const Text(
-        'This exercises real hardware; it cannot be simulated. With the '
-        'default SecurityPolicy.strong() the protecting key is bound to the '
-        'enrolled biometric set, so an enrollment change invalidates it.',
+        'A real app would NEVER display the PIN. Shown here only to prove '
+        'retrieval after biometric authentication.',
+        style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
       ),
       const SizedBox(height: 8),
-      const Text('Steps:'),
-      const Text('1. Tap "Store Biometric-Protected PIN".'),
-      const Text('2. Tap "Read Protected PIN" — it should succeed.'),
-      const Text(
-        '3. Leave the app; in system Settings add or remove a fingerprint/face.',
-      ),
-      const Text('4. Return to the app.'),
-      const Text('5. Tap "Check Enrollment" then "Read Protected PIN".'),
-      const Text('6. Observe: read should throw KeyInvalidatedException →'),
-      const Text(
-        '   "Secure key valid" shows INVALIDATED, PIN not accessible.',
-      ),
-      const Text('7. Recover: "Reset Invalidated Key", then store again.'),
-      const SizedBox(height: 8),
-      Text(platformNote, style: const TextStyle(fontStyle: FontStyle.italic)),
-      const SizedBox(height: 4),
-      const Text(
-        'Note: this does NOT guarantee every key configuration invalidates. '
-        'A policy with EnrollmentBinding.persistAcrossEnrollment (Android '
-        'setInvalidatedByBiometricEnrollment(false) / iOS biometryAny) survives '
-        'new enrollments by design.',
-        style: TextStyle(fontSize: 12),
+      Text(
+        _lastRetrievedPin ?? '(none)',
+        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
       ),
     ]);
   }
@@ -345,7 +459,7 @@ class _HomePageState extends State<HomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 175,
+          width: 165,
           child: Text(
             label,
             style: const TextStyle(fontWeight: FontWeight.w600),

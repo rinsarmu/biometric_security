@@ -74,7 +74,10 @@ public class BiometricSecurityPlugin: NSObject, FlutterPlugin, FlutterStreamHand
                 store.clear()
                 result(nil)
             case "resetInvalidated":
-                if let scope = args?["scope"] as? String { auth.reset(scope: scope) }
+                // Default to the "default" auth scope so a no-argument
+                // resetInvalidated() clears the standard authenticate() key
+                // rather than being a silent no-op.
+                auth.reset(scope: (args?["scope"] as? String) ?? "default")
                 result(nil)
             case "blobPut":
                 guard let data = (args?["blob"] as? FlutterStandardTypedData)?.data else {

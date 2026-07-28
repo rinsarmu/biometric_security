@@ -140,7 +140,15 @@ class BiometricSecurityPlugin :
         val alias = authAlias(scope)
 
         if (!keystore.keyExists(alias)) keystore.createKey(alias, gated = true, policy)
-        val cipher = keystore.encryptCipher(alias) // may throw KEY_INVALIDATED
+        val cipher = try {
+            keystore.encryptCipher(alias)
+        } catch (e: PluginException) {
+            // Self-heal: the auth key protects no stored secret, so on invalidation
+            // drop the dead key and let the next authenticate() re-provision. The
+            // KEY_INVALIDATED exception still surfaces cleanly to Dart.
+            if (e.code == SecurityCodes.KEY_INVALIDATED) keystore.deleteKey(alias)
+            throw e
+        }
 
         runGated(result) { safeResult ->
             authenticator.authenticate(

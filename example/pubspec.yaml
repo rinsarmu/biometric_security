@@ -4,6 +4,10 @@ description: "Demonstrates how to use the biometric_security plugin."
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
+# Provides CFBundleShortVersionString / CFBundleVersion to iOS and Android so the
+# build no longer warns about a missing build name/number.
+version: 1.0.0+1
+
 environment:
   sdk: ^3.9.2
 

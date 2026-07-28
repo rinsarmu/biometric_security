@@ -55,8 +55,22 @@ final class SecureEnclaveAuth {
         let context = LAContext()
         context.localizedReason = reason
 
+        // Whether we are reusing a previously-provisioned key. A failure to use an
+        // *existing* Secure Enclave key almost always means it was invalidated by a
+        // biometric-enrollment change (iOS reports this as a generic CryptoTokenKit
+        // error, not an LAError). See SECURITY_AUDIT.md M-4.
+        let hadExistingKey = ((try? store.getRaw(account: keyAccount(scope), context: nil)) ?? nil) != nil
+
+        let key: SecureEnclave.P256.Signing.PrivateKey
         do {
-            let key = try loadOrCreateKey(scope: scope, policy: policy, context: context)
+            key = try loadOrCreateKey(scope: scope, policy: policy, context: context)
+        } catch let error as PluginError {
+            throw error
+        } catch {
+            throw mapSigningError(error, hadExistingKey: hadExistingKey, scope: scope)
+        }
+
+        do {
             let signature = try key.signature(for: Self.proof)
             return [
                 "token": signature.rawRepresentation.base64EncodedString(),
@@ -65,11 +79,33 @@ final class SecureEnclaveAuth {
                 "usedModality": nil,
                 "securityLevel": "secureEnclave",
             ]
-        } catch let error as PluginError {
-            throw error
         } catch {
-            throw ErrorMapper.fromAuthError(error)
+            throw mapSigningError(error, hadExistingKey: hadExistingKey, scope: scope)
         }
+    }
+
+    /// Translates a Secure Enclave reconstruction/signing failure.
+    ///
+    /// Genuine LocalAuthentication outcomes (cancel, lockout, mismatch) are mapped
+    /// as-is. A non-LAError failure on a *previously-provisioned* auth key is
+    /// treated as invalidation: because the auth key protects no stored secret, we
+    /// delete it (self-heal) so the next `authenticate()` re-provisions, and report
+    /// a clean `KeyInvalidatedException` instead of a confusing `authFailed`.
+    private func mapSigningError(_ error: Error, hadExistingKey: Bool, scope: String)
+        -> PluginError
+    {
+        let nsError = error as NSError
+        if nsError.domain == LAError.errorDomain {
+            return ErrorMapper.fromAuthError(error)
+        }
+        if hadExistingKey {
+            reset(scope: scope)  // clear the dead key; next authenticate() re-provisions
+            return PluginError(
+                SecurityCodes.keyInvalidated,
+                "The authentication key was invalidated by a biometric change. "
+                    + "Authenticate again to re-provision.")
+        }
+        return ErrorMapper.fromAuthError(error)
     }
 
     private func loadOrCreateKey(
