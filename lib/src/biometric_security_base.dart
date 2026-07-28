@@ -17,11 +17,10 @@ import 'storage/secure_storage.dart';
 
 /// Thrown by contracts that are declared but not yet implemented in this
 /// foundation build. Replaced by real behavior in later milestones.
-Never _notYetImplemented(String api) =>
-    throw UnimplementedError(
-      '$api is defined by the API contract but not implemented in the '
-      'foundation scaffold. See ARCHITECTURE.md for the implementation plan.',
-    );
+Never _notYetImplemented(String api) => throw UnimplementedError(
+  '$api is defined by the API contract but not implemented in the '
+  'foundation scaffold. See ARCHITECTURE.md for the implementation plan.',
+);
 
 /// The single entry point to the biometric security layer.
 ///
@@ -195,10 +194,7 @@ class BiometricSecurity {
   Future<Set<SecretKey>> keys() async {
     _requireInitialized();
     final raw = await _storage.keys();
-    return raw
-        .where((k) => !k.startsWith('__'))
-        .map(SecretKey.new)
-        .toSet();
+    return raw.where((k) => !k.startsWith('__')).map(SecretKey.new).toSet();
   }
 
   /// Rotates the key material protecting [key]: re-keys and re-encrypts the

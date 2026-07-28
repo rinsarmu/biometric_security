@@ -31,6 +31,14 @@ final class SecureEnclaveAuth {
         if SecureEnclave.isAvailable {
             return try secureEnclaveSign(scope: scope, policy: policy, reason: reason)
         }
+        // Enforce the policy: do not silently downgrade to the weaker,
+        // presence-only LocalAuthentication path when the caller demanded secure
+        // hardware (SECURITY_AUDIT.md H-2).
+        if policy.requireSecureHardware {
+            throw PluginError(
+                SecurityCodes.policyUnsupported,
+                "Secure hardware (Secure Enclave) was required but is not available.")
+        }
         return try localAuthFallback(policy: policy, reason: reason)
     }
 

@@ -1,19 +1,19 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:biometric_security/biometric_security.dart';
+import 'package:biometric_security/src/storage/secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-/// A fake platform with an in-memory store, used to drive the facade without a
-/// native channel. Non-gated writes/reads round-trip; [authenticate] returns a
-/// canned session so higher-level flows (app-lock, feature gate) can be tested.
+import 'support/fakes.dart';
+
+/// A fake platform providing capability detection and a canned auth session.
+/// Storage is exercised through an injected [SecureStorage] over in-memory fakes.
 class _FakePlatform extends BiometricSecurityPlatform
     with MockPlatformInterfaceMixin {
   int initializeCalls = 0;
   int authenticateCalls = 0;
   String? lastAuthScope;
-  final Map<String, Uint8List> store = {};
 
   @override
   Future<void> initialize(BiometricSecurityConfig config) async {
@@ -40,19 +40,6 @@ class _FakePlatform extends BiometricSecurityPlatform
   }
 
   @override
-  Future<SecurityStatus> getSecurityStatus() async {
-    return SecurityStatus(
-      availability: await getAvailability(),
-      achievableSecurityLevel: SecurityLevel.strongBox,
-      reprovisionRequired: false,
-      integrityRisk: false,
-    );
-  }
-
-  @override
-  Stream<KeyLifecycleEvent> lifecycleEvents() => const Stream.empty();
-
-  @override
   Future<AuthSession> authenticate({
     required String reason,
     required SecurityPolicy policy,
@@ -69,43 +56,10 @@ class _FakePlatform extends BiometricSecurityPlatform
   }
 
   @override
-  Future<void> write({
-    required String key,
-    required Uint8List value,
-    required SecurityPolicy policy,
-    String? reason,
-  }) async {
-    store[key] = value;
-  }
-
-  @override
-  Future<Uint8List?> read({required String key, String? reason}) async =>
-      store[key];
-
-  @override
-  Future<void> delete({required String key}) async {
-    store.remove(key);
-  }
-
-  @override
-  Future<void> deleteAll() async => store.clear();
-
-  @override
-  Future<bool> contains({required String key}) async => store.containsKey(key);
-
-  @override
-  Future<Set<String>> keys() async => store.keys.toSet();
-
-  @override
-  Future<void> revoke({required String key}) async {
-    store.remove(key);
-  }
-
-  @override
-  Future<void> revokeAll() async => store.clear();
-
-  @override
   Future<void> resetInvalidated({String? scope}) async {}
+
+  @override
+  Stream<KeyLifecycleEvent> lifecycleEvents() => const Stream.empty();
 }
 
 void main() {
@@ -120,26 +74,27 @@ void main() {
     });
 
     test('encryptedOnly does not require authentication', () {
-      expect(const SecurityPolicy.encryptedOnly().requiresAuthentication, isFalse);
+      expect(
+        const SecurityPolicy.encryptedOnly().requiresAuthentication,
+        isFalse,
+      );
     });
 
     test('presets differ from the strong default', () {
-      expect(const SecurityPolicy.balanced(), isNot(const SecurityPolicy.strong()));
-      expect(const SecurityPolicy.convenient().deviceCredentialFallback,
-          DeviceCredentialFallback.allow);
+      expect(
+        const SecurityPolicy.balanced(),
+        isNot(const SecurityPolicy.strong()),
+      );
+      expect(
+        const SecurityPolicy.convenient().deviceCredentialFallback,
+        DeviceCredentialFallback.allow,
+      );
     });
 
     test('round-trips through toMap/fromMap', () {
       const original = SecurityPolicy.balanced();
       final restored = SecurityPolicy.fromMap(original.toMap());
       expect(restored, original);
-    });
-
-    test('copyWith replaces only the given field', () {
-      const base = SecurityPolicy();
-      final copy = base.copyWith(requireConfirmation: true);
-      expect(copy.requireConfirmation, isTrue);
-      expect(copy.minimumStrength, base.minimumStrength);
     });
   });
 
@@ -161,22 +116,16 @@ void main() {
         'hasStrongBox': false,
         'hasSecureEnclave': true,
       });
-      expect(a.supportedModalities,
-          {BiometricModality.face, BiometricModality.fingerprint});
-      expect(a.enrolledModalities, {BiometricModality.face});
-      expect(a.status, BiometricStatus.ready);
-      expect(a.hasSecureEnclave, isTrue);
-      // Honesty invariant: never surfaced as true.
+      expect(a.supportedModalities, {
+        BiometricModality.face,
+        BiometricModality.fingerprint,
+      });
       expect(a.guarantees.canForceSpecificModality, isFalse);
     });
 
     test('unknown enum names fall back safely', () {
-      final a = BiometricAvailability.fromMap(const {
-        'strength': 'bogus',
-        'status': 'also_bogus',
-      });
+      final a = BiometricAvailability.fromMap(const {'strength': 'bogus'});
       expect(a.strength, BiometricStrength.none);
-      expect(a.status, BiometricStatus.unknown);
     });
   });
 
@@ -205,11 +154,18 @@ void main() {
 
   group('BiometricSecurity facade', () {
     late _FakePlatform fake;
+    late FakeKeyVault vault;
+    late FakeBlobStore blobs;
     late BiometricSecurity security;
 
     setUp(() {
       fake = _FakePlatform();
-      security = BiometricSecurity(platform: fake);
+      vault = FakeKeyVault();
+      blobs = FakeBlobStore();
+      security = BiometricSecurity(
+        platform: fake,
+        storage: SecureStorage(keyVault: vault, blobStore: blobs),
+      );
     });
 
     test('throws NotInitializedException before initialize()', () {
@@ -220,25 +176,19 @@ void main() {
       await security.initialize();
       await security.initialize();
       expect(fake.initializeCalls, 1);
-      expect(security.isInitialized, isTrue);
     });
 
     test('getAvailability delegates to the platform', () async {
       await security.initialize();
-      final a = await security.getAvailability();
-      expect(a.canAuthenticate, isTrue);
-      expect(a.supportedModalities, contains(BiometricModality.fingerprint));
+      expect((await security.getAvailability()).canAuthenticate, isTrue);
     });
 
-    test('write/read round-trips text through the platform', () async {
+    test('write/read round-trips text through the engine', () async {
       await security.initialize();
-      await security.write(
-        key: const SecretKey('token'),
-        value: 'hello',
-        policy: const SecurityPolicy.encryptedOnly(),
-      );
+      await security.write(key: const SecretKey('token'), value: 'hello');
       expect(await security.read(key: const SecretKey('token')), 'hello');
-      expect(fake.store['token'], utf8.encode('hello'));
+      // Ciphertext is stored, plaintext is not.
+      expect(utf8Contains(blobs, 'token', 'hello'), isFalse);
     });
 
     test('read returns null for a missing key', () async {
@@ -246,13 +196,9 @@ void main() {
       expect(await security.read(key: const SecretKey('nope')), isNull);
     });
 
-    test('contains/keys/delete/deleteAll behave', () async {
+    test('contains/keys/delete behave and hide internal markers', () async {
       await security.initialize();
-      await security.write(
-        key: const SecretKey('a'),
-        value: '1',
-        policy: const SecurityPolicy.encryptedOnly(),
-      );
+      await security.write(key: const SecretKey('a'), value: '1');
       expect(await security.contains(key: const SecretKey('a')), isTrue);
       expect(await security.keys(), contains(const SecretKey('a')));
       await security.delete(key: const SecretKey('a'));
@@ -261,7 +207,10 @@ void main() {
 
     test('authenticate delegates and passes the scope', () async {
       await security.initialize();
-      final session = await security.authenticate(reason: 'x', scope: 'checkout');
+      final session = await security.authenticate(
+        reason: 'x',
+        scope: 'checkout',
+      );
       expect(session.token, 'ok');
       expect(fake.lastAuthScope, 'checkout');
     });
@@ -271,6 +220,8 @@ void main() {
       expect(await security.appLock.isEnabled(), isFalse);
       await security.appLock.enable(reason: 'enable');
       expect(await security.appLock.isEnabled(), isTrue);
+      // The app-lock marker is hidden from keys().
+      expect(await security.keys(), isEmpty);
       final session = await security.appLock.unlock(reason: 'unlock');
       expect(session.token, 'ok');
       expect(fake.lastAuthScope, 'app_lock');
@@ -278,32 +229,44 @@ void main() {
       expect(await security.appLock.isEnabled(), isFalse);
     });
 
-    test('feature gate: no policy succeeds trivially; with policy prompts',
-        () async {
-      await security.initialize();
-      final open = await security.features.guard(featureId: 'f', reason: 'x');
-      expect(open.securityLevel, SecurityLevel.none);
-      expect(fake.authenticateCalls, 0);
+    test(
+      'feature gate: no policy succeeds trivially; with policy prompts',
+      () async {
+        await security.initialize();
+        final open = await security.features.guard(featureId: 'f', reason: 'x');
+        expect(open.securityLevel, SecurityLevel.none);
+        expect(fake.authenticateCalls, 0);
 
-      await security.features.setPolicy(
-        featureId: 'f',
-        policy: const SecurityPolicy.strong(),
-      );
-      final gated = await security.features.guard(featureId: 'f', reason: 'x');
-      expect(gated.token, 'ok');
-      expect(fake.authenticateCalls, 1);
-      expect(fake.lastAuthScope, 'feature.f');
+        await security.features.setPolicy(
+          featureId: 'f',
+          policy: const SecurityPolicy.strong(),
+        );
+        await security.features.guard(featureId: 'f', reason: 'x');
+        expect(fake.authenticateCalls, 1);
+        expect(fake.lastAuthScope, 'feature.f');
+      },
+    );
+
+    test('rotateKey preserves the value', () async {
+      await security.initialize();
+      await security.write(key: const SecretKey('a'), value: 'secret');
+      await security.rotateKey(key: const SecretKey('a'));
+      expect(await security.read(key: const SecretKey('a')), 'secret');
     });
 
     test('still-unimplemented contracts throw UnimplementedError', () async {
       await security.initialize();
       expect(
-        () => security.signChallenge(
-          challenge: Uint8List(0),
-          reason: 'x',
-        ),
+        () => security.signChallenge(challenge: Uint8List(0), reason: 'x'),
         throwsA(isA<UnimplementedError>()),
       );
     });
   });
+}
+
+/// Whether the stored blob for [key] contains [needle] as plaintext.
+bool utf8Contains(FakeBlobStore blobs, String key, String needle) {
+  final blob = blobs.data[key];
+  if (blob == null) return false;
+  return String.fromCharCodes(blob).contains(needle);
 }

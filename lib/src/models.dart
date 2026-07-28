@@ -138,8 +138,11 @@ class BiometricAvailability {
       if (raw is! List) return const {};
       return raw
           .map(
-            (e) =>
-                enumFromName(BiometricModality.values, e, BiometricModality.unknown),
+            (e) => enumFromName(
+              BiometricModality.values,
+              e,
+              BiometricModality.unknown,
+            ),
           )
           .toSet();
     }
@@ -222,7 +225,11 @@ class KeyLifecycleEvent {
   final String message;
 
   /// Creates a lifecycle event.
-  const KeyLifecycleEvent({required this.type, this.scope, required this.message});
+  const KeyLifecycleEvent({
+    required this.type,
+    this.scope,
+    required this.message,
+  });
 
   /// Deserializes from a platform-channel map.
   factory KeyLifecycleEvent.fromMap(Map<Object?, Object?> map) {

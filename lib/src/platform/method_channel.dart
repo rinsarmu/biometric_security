@@ -18,7 +18,9 @@ import 'platform_interface.dart';
 /// reports `notImplemented` for anything else.
 class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
   /// The request/response channel.
-  static const MethodChannel methodChannel = MethodChannel('biometric_security');
+  static const MethodChannel methodChannel = MethodChannel(
+    'biometric_security',
+  );
 
   /// The lifecycle-event channel.
   static const EventChannel eventChannel = EventChannel(
@@ -88,15 +90,13 @@ class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
     String scope = 'default',
   }) async {
     try {
-      final result = await methodChannel.invokeMapMethod<Object?, Object?>(
-        'authenticate',
-        {
-          'reason': reason,
-          'policy': policy.toMap(),
-          'cancelLabel': cancelLabel,
-          'scope': scope,
-        },
-      );
+      final result = await methodChannel
+          .invokeMapMethod<Object?, Object?>('authenticate', {
+            'reason': reason,
+            'policy': policy.toMap(),
+            'cancelLabel': cancelLabel,
+            'scope': scope,
+          });
       if (result == null) {
         throw const BiometricAuthFailedException('No session returned.');
       }
@@ -196,7 +196,9 @@ class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
   @override
   Future<void> resetInvalidated({String? scope}) async {
     try {
-      await methodChannel.invokeMethod<void>('resetInvalidated', {'scope': scope});
+      await methodChannel.invokeMethod<void>('resetInvalidated', {
+        'scope': scope,
+      });
     } on PlatformException catch (e) {
       throw mapPlatformException(e);
     }
@@ -205,7 +207,10 @@ class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
   @override
   Future<void> blobPut({required String key, required Uint8List blob}) async {
     try {
-      await methodChannel.invokeMethod<void>('blobPut', {'key': key, 'blob': blob});
+      await methodChannel.invokeMethod<void>('blobPut', {
+        'key': key,
+        'blob': blob,
+      });
     } on PlatformException catch (e) {
       throw mapPlatformException(e);
     }
@@ -214,7 +219,9 @@ class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
   @override
   Future<Uint8List?> blobGet({required String key}) async {
     try {
-      return await methodChannel.invokeMethod<Uint8List?>('blobGet', {'key': key});
+      return await methodChannel.invokeMethod<Uint8List?>('blobGet', {
+        'key': key,
+      });
     } on PlatformException catch (e) {
       throw mapPlatformException(e);
     }

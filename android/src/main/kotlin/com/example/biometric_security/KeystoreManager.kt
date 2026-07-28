@@ -48,23 +48,24 @@ class KeystoreManager {
      * device cannot satisfy a `requireSecureHardware` policy.
      */
     fun createKey(alias: String, gated: Boolean, policy: PolicyConfig): SecretKey {
-        try {
-            return buildKey(alias, gated, policy, useStrongBox = policy.requireSecureHardware)
+        val key = try {
+            buildKey(alias, gated, policy, useStrongBox = policy.requireSecureHardware)
         } catch (e: StrongBoxUnavailableException) {
-            if (policy.requireSecureHardware) {
-                // Try TEE before giving up; only fail if the policy truly can't be met.
-                return try {
-                    buildKey(alias, gated, policy, useStrongBox = false)
-                } catch (inner: Exception) {
-                    throw PluginException(
-                        SecurityCodes.POLICY_UNSUPPORTED,
-                        "Secure hardware required but unavailable.",
-                        inner,
-                    )
-                }
-            }
-            return buildKey(alias, gated, policy, useStrongBox = false)
+            // StrongBox absent: fall back to the TEE (still secure hardware).
+            buildKey(alias, gated, policy, useStrongBox = false)
         }
+
+        // Enforce the policy: a requireSecureHardware key that landed in the
+        // software fallback (no TEE/StrongBox) must be rejected, not silently
+        // accepted (SECURITY_AUDIT.md H-2).
+        if (policy.requireSecureHardware && securityLevelOf(alias) == "software") {
+            deleteKey(alias)
+            throw PluginException(
+                SecurityCodes.POLICY_UNSUPPORTED,
+                "Secure hardware was required but is not available on this device.",
+            )
+        }
+        return key
     }
 
     private fun buildKey(

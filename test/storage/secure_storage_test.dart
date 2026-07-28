@@ -35,7 +35,11 @@ void main() {
     });
 
     test('the stored blob contains no plaintext and no key material', () async {
-      await storage.write(key: 'pin', value: _bytes('supersecret'), policy: policy);
+      await storage.write(
+        key: 'pin',
+        value: _bytes('supersecret'),
+        policy: policy,
+      );
       final blob = utf8.decode(blobs.data['pin']!);
       expect(blob.contains('supersecret'), isFalse);
       // The DEK lives only in the vault, never in the blob.
@@ -128,26 +132,28 @@ void main() {
       );
     });
 
-    test('tampered ciphertext throws CryptographicException (no plaintext)',
-        () async {
-      await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);
-      final env = Envelope.fromBytes(blobs.data['a']!);
-      final badCt = Uint8List.fromList(env.payload.cipherText);
-      badCt[0] = badCt[0] ^ 0xFF;
-      blobs.data['a'] = env
-          .copyWith(
-            payload: SealedPayload(
-              nonce: env.payload.nonce,
-              cipherText: badCt,
-              mac: env.payload.mac,
-            ),
-          )
-          .toBytes();
-      expect(
-        () => storage.read(key: 'a'),
-        throwsA(isA<CryptographicException>()),
-      );
-    });
+    test(
+      'tampered ciphertext throws CryptographicException (no plaintext)',
+      () async {
+        await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);
+        final env = Envelope.fromBytes(blobs.data['a']!);
+        final badCt = Uint8List.fromList(env.payload.cipherText);
+        badCt[0] = badCt[0] ^ 0xFF;
+        blobs.data['a'] = env
+            .copyWith(
+              payload: SealedPayload(
+                nonce: env.payload.nonce,
+                cipherText: badCt,
+                mac: env.payload.mac,
+              ),
+            )
+            .toBytes();
+        expect(
+          () => storage.read(key: 'a'),
+          throwsA(isA<CryptographicException>()),
+        );
+      },
+    );
 
     test('newer schema version is rejected, not misread', () {
       final future = Uint8List.fromList(
@@ -183,21 +189,42 @@ void main() {
       }
       expect(caught, isA<KeyInvalidatedException>());
     });
+
+    test('recovery: reprovision after invalidation restores access', () async {
+      // 1. Store and confirm readable.
+      await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);
+      expect(await storage.read(key: 'a'), _bytes('AAA'));
+
+      // 2. Enrollment change invalidates the protecting key.
+      vault.invalidated.add('a');
+      await expectLater(
+        () => storage.read(key: 'a'),
+        throwsA(isA<KeyInvalidatedException>()),
+      );
+
+      // 3. Recover: the app re-provisions the secret from its source of truth.
+      //    (In production: resetInvalidated() then write() with a fresh value.)
+      vault.invalidated.remove('a');
+      await storage.write(key: 'a', value: _bytes('NEW'), policy: policy);
+      expect(await storage.read(key: 'a'), _bytes('NEW'));
+    });
   });
 
   group('revocation', () {
-    test('revoke makes the secret unrecoverable even if ciphertext returns',
-        () async {
-      await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);
-      final savedBlob = Uint8List.fromList(blobs.data['a']!);
-      await storage.revoke('a');
-      // Restore only the ciphertext; the DEK is gone.
-      blobs.data['a'] = savedBlob;
-      expect(
-        () => storage.read(key: 'a'),
-        throwsA(isA<SecureStorageException>()),
-      );
-    });
+    test(
+      'revoke makes the secret unrecoverable even if ciphertext returns',
+      () async {
+        await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);
+        final savedBlob = Uint8List.fromList(blobs.data['a']!);
+        await storage.revoke('a');
+        // Restore only the ciphertext; the DEK is gone.
+        blobs.data['a'] = savedBlob;
+        expect(
+          () => storage.read(key: 'a'),
+          throwsA(isA<SecureStorageException>()),
+        );
+      },
+    );
 
     test('revokeAll destroys all keys and data', () async {
       await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);
@@ -231,6 +258,22 @@ void main() {
         expect(r, _bytes('AAA'));
       }
     });
+
+    test(
+      'concurrent writes to the SAME key never corrupt it (H-1 regression)',
+      () async {
+        // Without per-key serialization, an interleaved DEK/blob write would make
+        // the secret undecryptable. It must remain readable and equal to one of
+        // the written values.
+        await Future.wait([
+          for (var i = 0; i < 25; i++)
+            storage.write(key: 'race', value: _bytes('v$i'), policy: policy),
+        ]);
+        final out = await storage.read(key: 'race'); // must not throw
+        final value = String.fromCharCodes(out!);
+        expect(value, matches(RegExp(r'^v\d+$')));
+      },
+    );
   });
 
   group('migration', () {

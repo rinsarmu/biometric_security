@@ -101,7 +101,8 @@ class KeyInvalidatedException extends BiometricSecurityException {
 class EnrollmentChangedException extends BiometricSecurityException {
   /// Creates an enrollment-changed exception.
   const EnrollmentChangedException([
-    super.message = 'The enrolled biometrics changed since this data was stored.',
+    super.message =
+        'The enrolled biometrics changed since this data was stored.',
   ]);
 }
 
@@ -142,7 +143,8 @@ class UnsupportedPlatformException extends BiometricSecurityException {
 class PolicyUnsupportedException extends BiometricSecurityException {
   /// Creates a policy-unsupported exception.
   const PolicyUnsupportedException([
-    super.message = 'The requested security policy is not supported on this device.',
+    super.message =
+        'The requested security policy is not supported on this device.',
   ]);
 }
 

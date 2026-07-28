@@ -1,6 +1,7 @@
 /// The envelope-encryption storage engine.
 library;
 
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -22,9 +23,11 @@ import 'payload_cipher.dart';
 /// everything. On iOS the DEK-in-hardware model is also mandatory because the
 /// Secure Enclave is asymmetric-only (RESEARCH.md §4.4).
 ///
-/// Concurrency: operations are independent per key; the engine holds no mutable
-/// shared state, so concurrent calls on distinct keys are safe. The biometric
-/// prompt itself is serialized by the platform layer (ARCHITECTURE.md §19).
+/// Concurrency: all operations on a given key are **serialized** through a
+/// per-key lock so that a DEK and its ciphertext blob can never be written by
+/// interleaving callers (which would leave an undecryptable secret). Operations
+/// on distinct keys still run concurrently. The biometric prompt itself is
+/// additionally serialized by the platform layer (ARCHITECTURE.md §19).
 class SecureStorage {
   SecureStorage({
     required KeyVault keyVault,
@@ -41,28 +44,21 @@ class SecureStorage {
   final PayloadCipher _cipher;
   final Random _random;
 
+  /// Tail of the pending-operation chain for each key (the per-key lock).
+  final Map<String, Future<void>> _locks = {};
+
+  // --------------------------------------------------------------------------
+  // Public API (each entry point serialized per key)
+  // --------------------------------------------------------------------------
+
   /// Encrypts and stores [value] under [key].
   Future<void> write({
     required String key,
     required Uint8List value,
     required SecurityPolicy policy,
     String? reason,
-  }) async {
-    final dek = _newDek();
-    // Store the DEK in hardware first; if that is declined/fails, nothing is
-    // half-written that could later be mistaken for valid data.
-    await _vault.storeDek(id: key, dek: dek, policy: policy, reason: reason);
-    final sealed = await _cipher.seal(dek: dek, clearText: value);
-    final envelope = Envelope(
-      schemaVersion: Envelope.currentSchemaVersion,
-      vaultId: key,
-      dekVersion: 1,
-      algorithm: 'AES-256-GCM',
-      gated: policy.requiresAuthentication,
-      payload: sealed,
-      createdAtMs: DateTime.now().millisecondsSinceEpoch,
-    );
-    await _blobs.put(key, envelope.toBytes());
+  }) {
+    return _locked(key, () => _write(key, value, policy, reason));
   }
 
   /// Decrypts and returns the value for [key], or `null` if absent.
@@ -71,22 +67,15 @@ class SecureStorage {
   /// protecting key was invalidated, [CryptographicException] on a tag mismatch,
   /// and [SecureStorageException] on corrupt metadata. Never returns plaintext on
   /// any failure path (INV-3).
-  Future<Uint8List?> read({required String key, String? reason}) async {
-    final blob = await _blobs.get(key);
-    if (blob == null) return null;
-    final envelope = Envelope.fromBytes(blob); // throws on corruption
-    final dek = await _vault.loadDek(id: key, reason: reason); // throws on invalidation
-    return _cipher.open(dek: dek, payload: envelope.payload); // throws on tag mismatch
+  Future<Uint8List?> read({required String key, String? reason}) {
+    return _locked(key, () => _read(key, reason));
   }
 
   Future<bool> containsKey(String key) async => (await _blobs.get(key)) != null;
 
   /// Removes a secret and destroys its DEK (with a per-secret DEK, deleting the
   /// data already makes it cryptographically unrecoverable).
-  Future<void> delete(String key) async {
-    await _blobs.delete(key);
-    await _vault.destroyDek(id: key);
-  }
+  Future<void> delete(String key) => _locked(key, () => _delete(key));
 
   /// Removes all secrets and destroys their DEKs.
   Future<void> deleteAll() async {
@@ -107,23 +96,84 @@ class SecureStorage {
   /// Rotates the key material for [key]: unwraps the current value, generates a
   /// fresh DEK, re-encrypts, and re-stores — bumping [Envelope.dekVersion].
   ///
-  /// Prompts once (to read the current value) when the secret is gated. Safe
-  /// across a crash: the new DEK+blob are written before this returns; the old
-  /// DEK is overwritten in place.
+  /// Prompts once (to read the current value) when the secret is gated.
+  ///
+  /// NOT crash-atomic: because a per-secret DEK occupies a single hardware slot,
+  /// a process kill between storing the new DEK and writing the re-encrypted
+  /// blob leaves the secret temporarily undecryptable until the caller retries
+  /// (see SECURITY_AUDIT.md M-2). It never leaks or corrupts other secrets.
   Future<void> rotate({
     required String key,
     required SecurityPolicy policy,
     String? reason,
-  }) async {
+  }) {
+    return _locked(key, () => _rotate(key, policy, reason));
+  }
+
+  // --------------------------------------------------------------------------
+  // Internal (unlocked) implementations
+  // --------------------------------------------------------------------------
+
+  Future<void> _write(
+    String key,
+    Uint8List value,
+    SecurityPolicy policy,
+    String? reason,
+  ) async {
+    final dek = _newDek();
+    // Store the DEK in hardware first; if that is declined/fails, nothing is
+    // half-written that could later be mistaken for valid data.
+    await _vault.storeDek(id: key, dek: dek, policy: policy, reason: reason);
+    final sealed = await _cipher.seal(dek: dek, clearText: value);
+    final envelope = Envelope(
+      schemaVersion: Envelope.currentSchemaVersion,
+      vaultId: key,
+      dekVersion: 1,
+      algorithm: 'AES-256-GCM',
+      gated: policy.requiresAuthentication,
+      payload: sealed,
+      createdAtMs: DateTime.now().millisecondsSinceEpoch,
+    );
+    await _blobs.put(key, envelope.toBytes());
+  }
+
+  Future<Uint8List?> _read(String key, String? reason) async {
+    final blob = await _blobs.get(key);
+    if (blob == null) return null;
+    final envelope = Envelope.fromBytes(blob); // throws on corruption
+    final dek = await _vault.loadDek(
+      id: key,
+      reason: reason,
+    ); // throws on invalidation
+    return _cipher.open(
+      dek: dek,
+      payload: envelope.payload,
+    ); // throws on tag mismatch
+  }
+
+  Future<void> _delete(String key) async {
+    await _blobs.delete(key);
+    await _vault.destroyDek(id: key);
+  }
+
+  Future<void> _rotate(
+    String key,
+    SecurityPolicy policy,
+    String? reason,
+  ) async {
     final blob = await _blobs.get(key);
     if (blob == null) {
-      throw const SecureStorageException('Cannot rotate a non-existent secret.');
+      throw const SecureStorageException(
+        'Cannot rotate a non-existent secret.',
+      );
     }
     final oldEnvelope = Envelope.fromBytes(blob);
-    final clear = await read(key: key, reason: reason);
-    if (clear == null) {
-      throw const SecureStorageException('Cannot rotate: secret is unreadable.');
-    }
+    final currentDek = await _vault.loadDek(id: key, reason: reason);
+    final clear = await _cipher.open(
+      dek: currentDek,
+      payload: oldEnvelope.payload,
+    );
+
     final newDek = _newDek();
     await _vault.storeDek(id: key, dek: newDek, policy: policy, reason: reason);
     final sealed = await _cipher.seal(dek: newDek, clearText: clear);
@@ -140,5 +190,28 @@ class SecureStorage {
       dek[i] = _random.nextInt(256);
     }
     return dek;
+  }
+
+  /// Serializes [action] against any other operation on the same [key].
+  Future<T> _locked<T>(String key, Future<T> Function() action) {
+    final previous = _locks[key] ?? Future<void>.value();
+    final completer = Completer<void>();
+    _locks[key] = completer.future;
+
+    Future<T> run() async {
+      // Wait for the prior operation on this key; ignore its outcome for
+      // ordering purposes (its own caller already saw any error).
+      await previous.catchError((_) {});
+      try {
+        return await action();
+      } finally {
+        completer.complete();
+        if (identical(_locks[key], completer.future)) {
+          _locks.remove(key);
+        }
+      }
+    }
+
+    return run();
   }
 }
