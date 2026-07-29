@@ -5,9 +5,9 @@ import Security
 ///
 /// Blobs are already AES-256-GCM-encrypted by the Dart engine (the DEK lives in
 /// a biometric-gated Keychain entry), so these items are non-gated and hold only
-/// ciphertext — never key material (INV-2). They use a dedicated service so they
+/// ciphertext — never key material. They use a dedicated service so they
 /// never mix with the DEK/key store, and a `ThisDeviceOnly` protection class so
-/// they are excluded from backups and device migration (INV-5).
+/// they are excluded from backups and device migration.
 final class BlobKeychain {
 
     private let service: String

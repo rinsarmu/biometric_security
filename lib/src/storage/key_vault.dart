@@ -13,11 +13,11 @@ import '../policy.dart';
 /// The DEK is the only key that ever transits Dart, and only transiently; at
 /// rest it is held by secure hardware (Android Keystore / iOS Keychain +
 /// Secure Enclave), gated by biometrics when the policy requires it. The KEK/
-/// hardware key itself never crosses this boundary (INV-2).
+/// hardware key itself never crosses this boundary.
 ///
 /// Implementations must throw [KeyInvalidatedException] (never return a wrong or
 /// empty key) when the protecting hardware key was invalidated by an enrollment
-/// or lock change (INV-3).
+/// or lock change.
 abstract class KeyVault {
   /// Stores [dek] for [id] under [policy]. Overwrites any existing entry.
   Future<void> storeDek({
@@ -44,7 +44,7 @@ abstract class KeyVault {
 ///
 /// DEK entries are namespaced with a `dek:` prefix so they never collide with
 /// anything else. Retrieval of a gated DEK triggers the platform biometric
-/// prompt (that is the security gate, INV-1).
+/// prompt.
 class PlatformKeyVault implements KeyVault {
   PlatformKeyVault(this._platform);
 

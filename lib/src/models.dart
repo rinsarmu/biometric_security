@@ -10,7 +10,7 @@ class BiometricSecurityConfig {
   final SecurityPolicy defaultPolicy;
 
   /// A namespace so multiple logical stores do not collide. Maps to the
-  /// key-alias scope described in `ARCHITECTURE.md` §7.
+  /// key-alias scope used by the native key stores.
   final String namespace;
 
   /// Whether to emit [KeyLifecycleEventType.integrityRisk] events from
@@ -35,14 +35,14 @@ class BiometricSecurityConfig {
 /// A report of what the current device can actually enforce.
 ///
 /// There is deliberately **no** `guaranteedModality` field, because neither
-/// Android nor iOS can promise a specific biometric modality (INV-4).
+/// Android nor iOS can promise a specific biometric modality.
 class EnforceableGuarantees {
   /// Whether a minimum biometric strength can be enforced (Android Class 3;
   /// iOS biometrics are strong by default).
   final bool canEnforceStrength;
 
   /// Whether a key can be made physically unusable without authentication.
-  /// True on both platforms (INV-1).
+  /// True on both platforms.
   final bool canBindKeyToAuthentication;
 
   /// Whether keys can be invalidated when the enrolled biometrics change.
@@ -74,7 +74,7 @@ class EnforceableGuarantees {
 }
 
 /// Answers the "supported / enrolled / available" questions of the five-way
-/// biometric distinction (API_DESIGN.md §1).
+/// biometric distinction.
 class BiometricAvailability {
   /// Whether the device has any biometric hardware.
   final bool isSupported;
@@ -212,8 +212,7 @@ class SecurityStatus {
 
 /// A lifecycle event emitted on [BiometricSecurity.lifecycleEvents].
 ///
-/// Advisory only — the package never takes destructive action on its own
-/// (INV-3).
+/// Advisory only — the package never takes destructive action on its own.
 class KeyLifecycleEvent {
   /// The kind of event.
   final KeyLifecycleEventType type;

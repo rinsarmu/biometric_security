@@ -196,7 +196,7 @@ class _HomePageState extends State<HomePage> {
         _lastRetrievedPin = pin;
       });
       _append(
-        '✓ Authentication successful. Retrieved PIN: $pin  (TEST-ONLY display)',
+        '✓ Authentication successful. Retrieved PIN: $pin (TEST-ONLY display)',
       );
     } on KeyInvalidatedException catch (e) {
       // Security event: enrollment/key changed → do NOT retrieve, revoke login.
@@ -211,7 +211,7 @@ class _HomePageState extends State<HomePage> {
         _lastRetrievedPin = null;
       });
       _append(
-        '  → Biometric login disabled. Please enable it again with your PIN.',
+        ' → Biometric login disabled. Please enable it again with your PIN.',
       );
     } on BiometricAuthCanceledException {
       _append('✗ Login canceled by user.');

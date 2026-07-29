@@ -8,9 +8,7 @@ import 'enums.dart';
 ///
 /// One policy type drives both authentication and storage so developers learn
 /// it once. It is secure-by-default: the unnamed constructor is the strongest
-/// sensible policy (INV-6). Weaker behavior must be requested explicitly.
-///
-/// See `API_DESIGN.md` §3 and `ARCHITECTURE.md` DR-2 for the platform mapping.
+/// sensible policy, and weaker behavior must be requested explicitly.
 class SecurityPolicy {
   /// Minimum biometric strength. [BiometricStrength.strong] is required to
   /// cryptographically gate a key.
@@ -35,7 +33,7 @@ class SecurityPolicy {
   /// Backup/migration exposure of encrypted data at rest.
   final StorageAccessibility accessibility;
 
-  /// Advisory modality hint only. The OS may ignore it entirely (INV-4).
+  /// Advisory modality hint only. The OS may ignore it entirely.
   final BiometricModality? preferredModality;
 
   /// Require an explicit confirmation tap after a biometric match.

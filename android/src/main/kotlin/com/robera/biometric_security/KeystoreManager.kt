@@ -1,4 +1,4 @@
-package com.example.biometric_security
+package com.robera.biometric_security
 
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
@@ -17,16 +17,15 @@ import javax.crypto.spec.GCMParameterSpec
  * Owns all Android Keystore key material and the AES-256-GCM operations built on
  * top of it.
  *
- * Design decisions (see ARCHITECTURE.md §10 and DR-5):
- *  - Every key lives in the `AndroidKeyStore` provider. Private/secret key
- *    material is non-exportable and never leaves secure hardware, and never
- *    touches SharedPreferences, files, or any Dart-visible surface (INV-2).
- *  - Biometric-gated secrets use a **per-secret** Keystore key (this Android
- *    foundation favors per-secret keys over an envelope KEK: it keeps the DEK
- *    out of software entirely and gives clean per-secret revocation, at the cost
- *    of coarser rotation — a documented, more-conservative choice).
- *  - Non-gated ("encrypted-only") secrets share one namespace key that is not
- *    bound to user authentication, so reads/writes do not prompt.
+ * Design decisions:
+ * - Every key lives in the `AndroidKeyStore` provider. Private/secret key
+ * material is non-exportable and never leaves secure hardware, and never
+ * touches SharedPreferences, files, or any Dart-visible surface.
+ * - Biometric-gated secrets use a **per-secret** Keystore key. Preferring
+ * per-secret keys over an envelope KEK keeps the DEK out of software entirely
+ * and gives clean per-secret revocation, at the cost of coarser rotation.
+ * - Non-gated ("encrypted-only") secrets share one namespace key that is not
+ * bound to user authentication, so reads/writes do not prompt.
  *
  * Only AES/GCM/NoPadding with a 256-bit Keystore key is used — no weak, custom,
  * or software-managed key material.
@@ -57,7 +56,7 @@ class KeystoreManager {
 
         // Enforce the policy: a requireSecureHardware key that landed in the
         // software fallback (no TEE/StrongBox) must be rejected, not silently
-        // accepted (SECURITY_AUDIT.md H-2).
+        // accepted.
         if (policy.requireSecureHardware && securityLevelOf(alias) == "software") {
             deleteKey(alias)
             throw PluginException(
@@ -76,9 +75,9 @@ class KeystoreManager {
     ): SecretKey {
         val purposes = KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         val builder = KeyGenParameterSpec.Builder(alias, purposes)
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256)
+.setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+.setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+.setKeySize(256)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && useStrongBox) {
             builder.setIsStrongBoxBacked(true)
@@ -86,7 +85,7 @@ class KeystoreManager {
 
         if (gated) {
             builder.setUserAuthenticationRequired(true)
-            // Enrollment-change invalidation (RESEARCH.md §3.5). API 24+.
+            // Enrollment-change invalidation. API 24+.
             builder.setInvalidatedByBiometricEnrollment(policy.invalidateOnEnrollment)
             applyAuthParameters(builder, policy)
         }

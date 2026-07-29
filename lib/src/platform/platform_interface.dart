@@ -1,6 +1,6 @@
 /// The platform interface contract for `biometric_security`.
 ///
-/// This is the single audit boundary between Dart and native code (INV-2): only
+/// This is the single audit boundary between Dart and native code: only
 /// serializable data crosses it, never key material. It is a
 /// [PlatformInterface] so the plugin can later be split into a federated set of
 /// packages (`_platform_interface`, `_android`, `_darwin`) without changing the
@@ -18,10 +18,9 @@ import 'method_channel.dart';
 
 /// The interface every platform implementation must satisfy.
 ///
-/// The foundation wires only the read-only probes ([initialize],
-/// [getAvailability], [getSecurityStatus], [lifecycleEvents]). Security
-/// operations (authentication, storage, key management) are defined as
-/// contracts on the [BiometricSecurity] facade and are not yet implemented.
+/// App code uses [BiometricSecurity] instead; this type exists so the plugin
+/// can be split into federated platform packages without changing the
+/// app-facing API.
 abstract class BiometricSecurityPlatform extends PlatformInterface {
   /// Constructs a platform implementation.
   BiometricSecurityPlatform() : super(token: _token);

@@ -5,7 +5,7 @@ import LocalAuthentication
 /// Read-only biometric capability detection via LocalAuthentication.
 ///
 /// Answers the "supported / enrolled / available" questions of the five-way
-/// distinction (API_DESIGN.md §1). Unlike Android, iOS *can* report the enrolled
+/// distinction. Unlike Android, iOS *can* report the enrolled
 /// modality (a device has a single biometric family), so `enrolledModalities`
 /// is populated when a biometric is enrolled.
 enum Capabilities {
@@ -14,7 +14,7 @@ enum Capabilities {
         let context = LAContext()
         var authError: NSError?
         let canBiometric = context.canEvaluatePolicy(
-            .deviceOwnerAuthenticationWithBiometrics, error: &authError)
+.deviceOwnerAuthenticationWithBiometrics, error: &authError)
         let modality = modalityString(context.biometryType)
         let hasHardware = context.biometryType != .none
 
@@ -24,7 +24,7 @@ enum Capabilities {
         return [
             "isSupported": hasHardware,
             "supportedModalities": modality.map { [$0] } ?? [],
-            "enrolledModalities": (canBiometric ? modality.map { [$0] } : []) ?? [],
+            "enrolledModalities": (canBiometric ? modality.map { [$0] }: []) ?? [],
             "strength": strength,
             "canAuthenticate": canBiometric,
             "status": status,
@@ -45,11 +45,11 @@ enum Capabilities {
 
     private static func modalityString(_ type: LABiometryType) -> String? {
         switch type {
-        case .faceID: return "face"
-        case .touchID: return "fingerprint"
-        case .none: return nil
+        case.faceID: return "face"
+        case.touchID: return "fingerprint"
+        case.none: return nil
         default:
-            // .opticID (Vision Pro) and any future types.
+            //.opticID (Vision Pro) and any future types.
             return "unknown"
         }
     }
@@ -62,13 +62,13 @@ enum Capabilities {
             return "unknown"
         }
         switch code {
-        case .biometryNotEnrolled:
+        case.biometryNotEnrolled:
             return "notEnrolled"
-        case .biometryNotAvailable:
+        case.biometryNotAvailable:
             return context.biometryType == .none ? "noHardware" : "hardwareUnavailable"
-        case .passcodeNotSet:
+        case.passcodeNotSet:
             return "noDeviceCredential"
-        case .biometryLockout:
+        case.biometryLockout:
             return "lockedOut"
         default:
             return "unknown"
@@ -80,7 +80,7 @@ enum Capabilities {
             "canEnforceStrength": true,
             "canBindKeyToAuthentication": true,
             "canInvalidateOnEnrollmentChange": true,
-            // Never true: iOS cannot force a specific modality (INV-4).
+            // Never true: iOS cannot force a specific modality.
             "canForceSpecificModality": false,
         ]
     }

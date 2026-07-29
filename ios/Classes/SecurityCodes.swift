@@ -7,7 +7,7 @@ import Security
 /// Every value here maps 1:1 to a typed `BiometricSecurityException` subtype in
 /// `lib/src/platform/method_channel.dart` (`mapPlatformException`). Raw iOS
 /// statuses (`OSStatus`, `LAError`) are never surfaced across the channel; they
-/// are translated into one of these codes first (ARCHITECTURE.md §12).
+/// are translated into one of these codes first.
 enum SecurityCodes {
     static let authCanceled = "auth_canceled"
     static let authFailed = "auth_failed"
@@ -69,26 +69,26 @@ enum ErrorMapper {
                 SecurityCodes.authFailed, nsError.localizedDescription)
         }
         switch code {
-        case .userCancel, .appCancel, .systemCancel:
+        case.userCancel, .appCancel, .systemCancel:
             return PluginError(SecurityCodes.authCanceled, "Authentication was canceled.")
-        case .authenticationFailed:
+        case.authenticationFailed:
             return PluginError(SecurityCodes.authFailed, "Authentication failed.")
-        case .userFallback:
+        case.userFallback:
             return PluginError(
                 SecurityCodes.authFailed, "The user chose the fallback option.")
-        case .biometryLockout:
+        case.biometryLockout:
             return PluginError(
                 SecurityCodes.lockedOut,
                 "Biometrics are locked. Unlock with your device passcode.")
-        case .biometryNotEnrolled:
+        case.biometryNotEnrolled:
             return PluginError(SecurityCodes.notEnrolled, "No biometric is enrolled.")
-        case .biometryNotAvailable:
+        case.biometryNotAvailable:
             return PluginError(
                 SecurityCodes.unavailable, "Biometric authentication is unavailable.")
-        case .passcodeNotSet:
+        case.passcodeNotSet:
             return PluginError(
                 SecurityCodes.unavailable, "No device passcode is set.")
-        case .invalidContext, .notInteractive:
+        case.invalidContext, .notInteractive:
             return PluginError(
                 SecurityCodes.unavailable, "Authentication context is unavailable.")
         default:

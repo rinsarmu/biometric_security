@@ -4,22 +4,22 @@ import Security
 
 /// Secure storage backed by the iOS Keychain.
 ///
-/// Design (ARCHITECTURE.md §11):
-///  - A **secret item** (`sec:<key>`) holds the value. When gated, it carries a
-///    `SecAccessControl` requiring biometrics (`biometryCurrentSet` /
-///    `biometryAny`), so the OS only releases the data after a successful
-///    biometric evaluation (INV-1). The Keychain encrypts data at rest with
-///    hardware keys — nothing sensitive is stored in UserDefaults, plain files,
-///    or SQLite (INV-2).
-///  - A companion **meta item** (`meta:<key>`, never gated) records whether the
-///    secret is gated, its enrollment binding, and the biometric domain-state
-///    fingerprint captured at write time. This lets `read` detect an enrollment
-///    change *before* prompting (deterministic invalidation for
-///    `biometryCurrentSet` items) and lets `keys()`/`contains()` work without a
-///    prompt.
+/// Design:
+/// - A **secret item** (`sec:<key>`) holds the value. When gated, it carries a
+/// `SecAccessControl` requiring biometrics (`biometryCurrentSet` /
+/// `biometryAny`), so the OS only releases the data after a successful
+/// biometric evaluation. The Keychain encrypts data at rest with
+/// hardware keys — nothing sensitive is stored in UserDefaults, plain files,
+/// or SQLite.
+/// - A companion **meta item** (`meta:<key>`, never gated) records whether the
+/// secret is gated, its enrollment binding, and the biometric domain-state
+/// fingerprint captured at write time. This lets `read` detect an enrollment
+/// change *before* prompting (deterministic invalidation for
+/// `biometryCurrentSet` items) and lets `keys()`/`contains()` work without a
+/// prompt.
 ///
 /// All values use a `ThisDeviceOnly` protection class, so secrets are excluded
-/// from iCloud/iTunes backups and device migration (INV-5).
+/// from iCloud/iTunes backups and device migration.
 final class KeychainStore {
 
     private let service: String
@@ -46,7 +46,7 @@ final class KeychainStore {
             try addRaw(
                 account: secretAccount(key), data: value, accessControl: access,
                 accessible: nil)
-            let domain = policy.invalidateOnEnrollment ? Self.currentDomainState() : nil
+            let domain = policy.invalidateOnEnrollment ? Self.currentDomainState(): nil
             try writeMeta(
                 key: key,
                 meta: Meta(
@@ -199,7 +199,7 @@ final class KeychainStore {
     static func currentDomainState() -> String? {
         let context = LAContext()
         _ = context.canEvaluatePolicy(
-            .deviceOwnerAuthenticationWithBiometrics, error: nil)
+.deviceOwnerAuthenticationWithBiometrics, error: nil)
         return context.evaluatedPolicyDomainState?.base64EncodedString()
     }
 

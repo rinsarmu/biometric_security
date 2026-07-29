@@ -1,4 +1,4 @@
-package com.example.biometric_security
+package com.robera.biometric_security
 
 import android.content.Context
 import androidx.fragment.app.FragmentActivity
@@ -21,12 +21,12 @@ import io.flutter.plugin.common.MethodChannel.Result
  * Threading & concurrency: method calls arrive on the main thread; gated
  * operations schedule a `BiometricPrompt` and resolve their [Result] from the
  * prompt callback (also main thread). A single-flight guard serializes prompts,
- * because overlapping `BiometricPrompt`s are unsupported (ARCHITECTURE.md §19).
+ * because overlapping `BiometricPrompt`s are unsupported.
  *
  * Error handling: every failure is translated to a [SecurityCodes] value; raw
  * Android exceptions never cross the channel.
  */
-class BiometricSecurityPlugin :
+class BiometricSecurityPlugin:
     FlutterPlugin,
     ActivityAware,
     MethodCallHandler,

@@ -7,7 +7,7 @@ the public API may still change between minor versions.
 ## 0.1.0
 
 Initial public beta. **Not yet production-ready** — see the "Status" and
-"Platform limitations" sections of the README and `SECURITY_AUDIT.md`.
+"Platform limitations" sections of the README.
 
 ### Added
 
@@ -37,7 +37,7 @@ Initial public beta. **Not yet production-ready** — see the "Status" and
   keys / software auth fallback).
 - Serialized per-key storage operations to prevent a concurrent-write
   DEK/ciphertext mismatch.
-- See `SECURITY_AUDIT.md` for the full independent audit and remaining items.
+- All high-risk findings from an independent security review are fixed.
 
 ### Known limitations
 

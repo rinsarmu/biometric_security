@@ -5,11 +5,11 @@ import LocalAuthentication
 /// Implements `authenticate()` with the strongest practical mechanism.
 ///
 /// When a Secure Enclave is present, it uses a biometric-gated Secure Enclave
-/// P-256 signing key and proves authentication by signing a constant (INV-1: the
-/// key is physically unusable without a successful biometric evaluation, so a
-/// forged "success" cannot produce a valid signature). The key's persisted
+/// P-256 signing key and proves authentication by signing a constant: the key is
+/// physically unusable without a successful biometric evaluation, so a forged
+/// "success" cannot produce a valid signature. The key's persisted
 /// `dataRepresentation` is a Secure-Enclave-wrapped blob — the private key never
-/// leaves the Enclave and is never exposed to Dart (INV-2).
+/// leaves the Enclave and is never exposed to Dart.
 ///
 /// On devices without a Secure Enclave (e.g. the simulator), it falls back to a
 /// LocalAuthentication policy evaluation, which is a weaker presence check — this
@@ -33,7 +33,7 @@ final class SecureEnclaveAuth {
         }
         // Enforce the policy: do not silently downgrade to the weaker,
         // presence-only LocalAuthentication path when the caller demanded secure
-        // hardware (SECURITY_AUDIT.md H-2).
+        // hardware.
         if policy.requireSecureHardware {
             throw PluginError(
                 SecurityCodes.policyUnsupported,
@@ -58,7 +58,7 @@ final class SecureEnclaveAuth {
         // Whether we are reusing a previously-provisioned key. A failure to use an
         // *existing* Secure Enclave key almost always means it was invalidated by a
         // biometric-enrollment change (iOS reports this as a generic CryptoTokenKit
-        // error, not an LAError). See SECURITY_AUDIT.md M-4.
+        // error, not an LAError).
         let hadExistingKey = ((try? store.getRaw(account: keyAccount(scope), context: nil)) ?? nil) != nil
 
         let key: SecureEnclave.P256.Signing.PrivateKey
@@ -99,7 +99,7 @@ final class SecureEnclaveAuth {
             return ErrorMapper.fromAuthError(error)
         }
         if hadExistingKey {
-            reset(scope: scope)  // clear the dead key; next authenticate() re-provisions
+            reset(scope: scope) // clear the dead key; next authenticate() re-provisions
             return PluginError(
                 SecurityCodes.keyInvalidated,
                 "The authentication key was invalidated by a biometric change. "

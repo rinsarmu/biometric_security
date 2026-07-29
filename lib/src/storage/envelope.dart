@@ -12,7 +12,7 @@ import 'payload_cipher.dart';
 /// Stored as a self-describing JSON blob (base64 for binary fields) so it can be
 /// inspected and migrated. It contains **no key material** — only the nonce,
 /// ciphertext, authentication tag, and bookkeeping. The data-encryption key is
-/// held separately by the hardware [KeyVault] (ARCHITECTURE.md §6).
+/// held separately by the hardware [KeyVault].
 class Envelope {
   /// The current on-disk schema version.
   static const int currentSchemaVersion = 1;
@@ -75,7 +75,7 @@ class Envelope {
   /// Parses and, if necessary, migrates a stored blob to the current schema.
   ///
   /// Throws [SecureStorageException] on corrupt/unreadable data — never returns a
-  /// partially-decoded or empty envelope (INV-3).
+  /// partially-decoded or empty envelope.
   factory Envelope.fromBytes(Uint8List bytes) {
     final Map<String, Object?> map;
     try {

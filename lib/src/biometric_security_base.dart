@@ -15,11 +15,9 @@ import 'storage/blob_store.dart';
 import 'storage/key_vault.dart';
 import 'storage/secure_storage.dart';
 
-/// Thrown by contracts that are declared but not yet implemented in this
-/// foundation build. Replaced by real behavior in later milestones.
+/// Thrown by API surface that is declared but not implemented in this release.
 Never _notYetImplemented(String api) => throw UnimplementedError(
-  '$api is defined by the API contract but not implemented in the '
-  'foundation scaffold. See ARCHITECTURE.md for the implementation plan.',
+  '$api is part of the public API but is not implemented in this release.',
 );
 
 /// The single entry point to the biometric security layer.
@@ -106,7 +104,7 @@ class BiometricSecurity {
   }
 
   // ------------------------------------------------------------------------
-  // Authentication  (contract only — not implemented in the foundation)
+  // Authentication
   // ------------------------------------------------------------------------
 
   /// Performs a cryptographically-backed authentication and returns a verified
@@ -137,7 +135,7 @@ class BiometricSecurity {
   }
 
   // ------------------------------------------------------------------------
-  // Storage  (contract only — not implemented in the foundation)
+  // Storage
   // ------------------------------------------------------------------------
 
   /// Encrypts and stores [value] under [key].
@@ -216,7 +214,7 @@ class BiometricSecurity {
   }
 
   // ------------------------------------------------------------------------
-  // Enable / disable protection  (contract only)
+  // Enable / disable protection (contract only)
   // ------------------------------------------------------------------------
 
   /// Upgrades an existing secret to a biometric-gated [policy].
@@ -242,7 +240,7 @@ class BiometricSecurity {
   }
 
   // ------------------------------------------------------------------------
-  // Revocation / deletion  (contract only)
+  // Revocation / deletion (contract only)
   // ------------------------------------------------------------------------
 
   /// Deletes one secret's ciphertext and its DEK. Idempotent.
@@ -289,7 +287,7 @@ class BiometricSecurity {
 
 /// The app-lock sub-API, obtained from [BiometricSecurity.appLock].
 ///
-/// "Unlocked" means a real authentication happened (INV-1), not a flag a hooked
+/// "Unlocked" means a real authentication happened, not a flag a hooked
 /// process can flip.
 class AppLock {
   AppLock._(this._owner);
@@ -350,8 +348,8 @@ class FeatureProtection {
   /// Registers or replaces the policy guarding [featureId].
   ///
   /// Note: registered policies are held in memory for the lifetime of this
-  /// instance; register them at startup. Persisting feature policies across
-  /// launches is a later milestone.
+  /// instance, so register them at startup. They are not persisted across
+  /// app launches.
   Future<void> setPolicy({
     required String featureId,
     required SecurityPolicy policy,

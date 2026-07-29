@@ -13,7 +13,7 @@ sealed class BiometricSecurityException implements Exception {
   final String message;
 
   /// Opaque platform detail for logging only. Never a platform-specific type in
-  /// the public API (INV-2).
+  /// the public API.
   final Object? platformDetail;
 
   /// Creates an exception.
@@ -85,7 +85,7 @@ class BiometricNotEnrolledException extends BiometricSecurityException {
 
 /// A key was permanently invalidated (for example by an enrollment change or by
 /// the device lock being disabled). The package never auto-repairs this
-/// (INV-3); the caller must reprovision.
+///; the caller must reprovision.
 class KeyInvalidatedException extends BiometricSecurityException {
   /// The affected protection scope, if known.
   final String? scope;

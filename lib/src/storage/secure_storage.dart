@@ -15,19 +15,19 @@ import 'payload_cipher.dart';
 /// The secure storage engine: envelope encryption over a per-secret DEK, with
 /// versioned metadata, migration, and key rotation.
 ///
-/// Keying strategy (ARCHITECTURE.md DR-5, "safest practical"): **each secret has
+/// Keying strategy: **each secret has
 /// its own random 256-bit DEK.** The payload is sealed with AES-256-GCM under
 /// that DEK (software), and the DEK is held by the hardware [KeyVault]. This
 /// gives per-secret isolation and revocation (destroying one secret's DEK cannot
 /// affect any other) without a shared master key whose compromise would expose
 /// everything. On iOS the DEK-in-hardware model is also mandatory because the
-/// Secure Enclave is asymmetric-only (RESEARCH.md §4.4).
+/// Secure Enclave is asymmetric-only.
 ///
 /// Concurrency: all operations on a given key are **serialized** through a
 /// per-key lock so that a DEK and its ciphertext blob can never be written by
 /// interleaving callers (which would leave an undecryptable secret). Operations
 /// on distinct keys still run concurrently. The biometric prompt itself is
-/// additionally serialized by the platform layer (ARCHITECTURE.md §19).
+/// additionally serialized by the platform layer.
 class SecureStorage {
   SecureStorage({
     required KeyVault keyVault,
@@ -66,7 +66,7 @@ class SecureStorage {
   /// Prompts when the secret is gated. Throws [KeyInvalidatedException] when the
   /// protecting key was invalidated, [CryptographicException] on a tag mismatch,
   /// and [SecureStorageException] on corrupt metadata. Never returns plaintext on
-  /// any failure path (INV-3).
+  /// any failure path.
   Future<Uint8List?> read({required String key, String? reason}) {
     return _locked(key, () => _read(key, reason));
   }
@@ -101,7 +101,7 @@ class SecureStorage {
   /// NOT crash-atomic: because a per-secret DEK occupies a single hardware slot,
   /// a process kill between storing the new DEK and writing the re-encrypted
   /// blob leaves the secret temporarily undecryptable until the caller retries
-  /// (see SECURITY_AUDIT.md M-2). It never leaks or corrupts other secrets.
+  ///. It never leaks or corrupts other secrets.
   Future<void> rotate({
     required String key,
     required SecurityPolicy policy,

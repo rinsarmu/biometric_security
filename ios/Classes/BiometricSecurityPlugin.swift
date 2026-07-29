@@ -10,7 +10,7 @@ import UIKit
 ///
 /// Threading: gated reads and authentication block on the biometric UI, so they
 /// run on a background queue; their `FlutterResult` is delivered back on the main
-/// queue. A single-flight guard serializes prompts (ARCHITECTURE.md §19).
+/// queue. A single-flight guard serializes prompts.
 ///
 /// Error handling: every failure is translated to a [SecurityCodes] value via
 /// [ErrorMapper]; raw `OSStatus`/`LAError` values never cross the channel.
@@ -19,7 +19,7 @@ public class BiometricSecurityPlugin: NSObject, FlutterPlugin, FlutterStreamHand
     private var eventSink: FlutterEventSink?
     private var namespace = "default"
     private var authInProgress = false
-    private let workQueue = DispatchQueue(label: "biometric_security.work", qos: .userInitiated)
+    private let workQueue = DispatchQueue(label: "biometric_security.work", qos:.userInitiated)
 
     private lazy var store = KeychainStore(namespace: namespace)
     private lazy var auth = SecureEnclaveAuth(store: store)
@@ -183,9 +183,9 @@ public class BiometricSecurityPlugin: NSObject, FlutterPlugin, FlutterStreamHand
                 DispatchQueue.main.async {
                     self?.authInProgress = false
                     switch delivery {
-                    case .success(let value):
+                    case.success(let value):
                         result(value)
-                    case .failure(let error):
+                    case.failure(let error):
                         result(
                             FlutterError(
                                 code: error.code, message: error.message, details: nil))

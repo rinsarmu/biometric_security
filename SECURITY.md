@@ -5,11 +5,10 @@ and appreciate responsible disclosure.
 
 ## Status
 
-**This package is a 0.1.0 public beta and is not yet production-ready.** See
-[`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) for the independent audit, the fixed
-high-risk findings, and the remaining medium/low items. Do not use it to protect
-high-value production secrets until those items and on-device validation are
-complete.
+**This package is a 0.1.0 public beta and is not yet production-ready.** An
+independent security review fixed all high-risk findings; medium/low items and
+on-device validation remain. Do not use it to protect high-value production
+secrets until those items are complete.
 
 ## Supported versions
 
@@ -52,4 +51,4 @@ survive migration. See the README threat model.
 - Biometric-gated key operations (not a forgeable boolean).
 - Fails loud: never returns plaintext or silently regenerates keys.
 
-Full detail: [`ARCHITECTURE.md`](ARCHITECTURE.md), [`STORAGE.md`](STORAGE.md).
+Full detail is documented in the README.

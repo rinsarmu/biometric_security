@@ -42,8 +42,7 @@ cd example && flutter build ios --no-codesign
 2. Keep changes focused; one concern per PR.
 3. Add or update tests — especially for cryptography, key lifecycle, and failure
    paths. New security-relevant behavior needs a test that proves it.
-4. Update `CHANGELOG.md` and any affected docs
-   (`ARCHITECTURE.md`, `STORAGE.md`, `SECURITY_AUDIT.md`, `README.md`).
+4. Update `CHANGELOG.md`, `README.md`, and any affected documentation.
 5. Ensure `flutter analyze`, `flutter test`, and `dart format --set-exit-if-changed .`
    all pass.
 6. Match the surrounding code style, naming, and comment density.

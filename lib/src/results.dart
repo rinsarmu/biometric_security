@@ -8,7 +8,7 @@ import 'enums.dart';
 /// Proof that a real, key-backed authentication succeeded.
 ///
 /// This is intentionally not a bare boolean: a session is produced only when an
-/// actual hardware key operation ran under the authentication (INV-1).
+/// actual hardware key operation ran under the authentication.
 class AuthSession {
   /// An opaque, non-forgeable marker that a hardware key operation ran.
   final String token;

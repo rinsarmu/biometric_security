@@ -5,7 +5,7 @@ import Security
 ///
 /// Holds the platform-independent intent and maps it to the concrete
 /// `SecAccessControl` flags and Keychain protection class used by
-/// `KeychainStore` and `SecureEnclaveAuth` (ARCHITECTURE.md DR-2, §11).
+/// `KeychainStore` and `SecureEnclaveAuth`.
 struct PolicyConfig: Equatable {
     let minimumStrength: String
     let deviceCredentialFallback: Bool
@@ -44,11 +44,11 @@ struct PolicyConfig: Equatable {
     }
 
     /// The Keychain protection class. `ThisDeviceOnly` variants are excluded
-    /// from backups and device migration (INV-5).
+    /// from backups and device migration.
     var protectionClass: CFString {
         afterFirstUnlock
             ? kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-            : kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
     }
 
     /// Builds a `SecAccessControl` for a biometric-gated item or key.

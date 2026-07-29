@@ -35,7 +35,7 @@ flutter:
   plugin:
     platforms:
       android:
-        package: com.example.biometric_security
+        package: com.robera.biometric_security
         pluginClass: BiometricSecurityPlugin
       ios:
         pluginClass: BiometricSecurityPlugin

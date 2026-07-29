@@ -29,8 +29,8 @@ class SealedPayload {
 /// AES-256-GCM authenticated encryption over a data-encryption key (DEK).
 ///
 /// This is the only cryptographic primitive in the Dart layer, provided by the
-/// well-established `cryptography` package — no custom crypto (RESEARCH.md §2.5).
-/// It operates solely on software DEKs; hardware keys never reach it (INV-2).
+/// well-established `cryptography` package — no custom crypto.
+/// It operates solely on software DEKs; hardware keys never reach it.
 class PayloadCipher {
   PayloadCipher() : _algorithm = AesGcm.with256bits();
 
@@ -60,7 +60,7 @@ class PayloadCipher {
   ///
   /// Throws [CryptographicException] if the authentication tag does not verify
   /// (tampered ciphertext, wrong key, corruption). No plaintext is ever returned
-  /// on failure (INV-3).
+  /// on failure.
   Future<Uint8List> open({
     required Uint8List dek,
     required SealedPayload payload,

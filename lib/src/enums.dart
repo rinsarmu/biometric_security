@@ -1,18 +1,16 @@
 /// Enumerations for the public `biometric_security` API.
-///
-/// See `API_DESIGN.md` §2 and `ARCHITECTURE.md` §3 for the design rationale.
 library;
 
 /// A biometric hardware family.
 ///
 /// Informational for UX only; it is **not** selectable or enforceable. Neither
-/// Android nor iOS lets an app force a specific modality (see INV-4).
+/// Android nor iOS lets an app force a specific modality.
 enum BiometricModality { face, fingerprint, iris, unknown }
 
 /// Android biometric strength classes.
 ///
 /// iOS has no weak tier, so enrolled iOS biometrics are reported as [strong].
-/// Only [strong] biometrics can gate a cryptographic key (RESEARCH.md §3.2).
+/// Only [strong] biometrics can gate a cryptographic key.
 enum BiometricStrength { strong, weak, none }
 
 /// Why authentication is or is not currently possible.
@@ -67,8 +65,8 @@ enum HardwareRequirement { preferStrongestAvailable, requireSecureHardware }
 
 /// When encrypted data may be decrypted, relative to device unlock.
 ///
-/// The `thisDeviceOnly` variants are excluded from backups and device migration
-/// (INV-5).
+/// The `thisDeviceOnly` variants are excluded from backups and device
+/// migration.
 enum StorageAccessibility {
   whenUnlockedThisDeviceOnly,
   afterFirstUnlockThisDeviceOnly,

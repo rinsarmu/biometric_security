@@ -12,11 +12,6 @@
 /// await security.initialize();
 /// final availability = await security.getAvailability();
 /// ```
-///
-/// See `API_DESIGN.md` for the full design and `ARCHITECTURE.md` for the
-/// security model. This is a foundation build: types and contracts are present;
-/// cryptography, key management, authentication, and storage are not yet
-/// implemented.
 library;
 
 export 'src/biometric_security_base.dart'

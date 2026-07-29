@@ -1,4 +1,4 @@
-package com.example.biometric_security
+package com.robera.biometric_security
 
 import android.content.Context
 import android.content.pm.PackageManager
@@ -11,7 +11,7 @@ import androidx.biometric.BiometricManager.Authenticators
  * strength, secure-hardware presence).
  *
  * Answers the "supported / available" questions of the five-way distinction
- * (API_DESIGN.md §1). Android intentionally does **not** expose *which* modality
+ *. Android intentionally does **not** expose *which* modality
  * is enrolled, so [enrolledModalities] is left empty and callers must rely on
  * [status] and [strength] to know whether a biometric is enrolled — a documented
  * platform limitation.
@@ -101,7 +101,7 @@ class Capabilities(private val context: Context) {
         "canEnforceStrength" to true,
         "canBindKeyToAuthentication" to true,
         "canInvalidateOnEnrollmentChange" to true,
-        // Never true: Android cannot force a specific modality (INV-4).
+        // Never true: Android cannot force a specific modality.
         "canForceSpecificModality" to false,
     )
 }

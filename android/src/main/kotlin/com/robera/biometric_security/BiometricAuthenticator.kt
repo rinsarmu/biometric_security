@@ -1,4 +1,4 @@
-package com.example.biometric_security
+package com.robera.biometric_security
 
 import androidx.biometric.BiometricManager.Authenticators
 import androidx.biometric.BiometricPrompt
@@ -8,7 +8,7 @@ import javax.crypto.Cipher
 
 /**
  * Presents `BiometricPrompt` and binds the authentication to a specific key
- * operation via a `CryptoObject` (INV-1): the returned [Cipher] is only usable
+ * operation via a `CryptoObject`: the returned [Cipher] is only usable
  * after a successful authentication, so a forged "success" cannot unlock data.
  *
  * All `BiometricPrompt` error codes are translated to [SecurityCodes] here; raw
@@ -30,7 +30,7 @@ class BiometricAuthenticator {
         onError: (String, String) -> Unit,
     ) {
         val executor = ContextCompat.getMainExecutor(activity)
-        val callback = object : BiometricPrompt.AuthenticationCallback() {
+        val callback = object: BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(
                 result: BiometricPrompt.AuthenticationResult,
             ) {
@@ -68,8 +68,8 @@ class BiometricAuthenticator {
         cancelLabel: String?,
     ): BiometricPrompt.PromptInfo {
         val builder = BiometricPrompt.PromptInfo.Builder()
-            .setTitle(reason)
-            .setConfirmationRequired(policy.requireConfirmation)
+.setTitle(reason)
+.setConfirmationRequired(policy.requireConfirmation)
 
         if (policy.deviceCredentialFallback) {
             // A negative button is not allowed together with DEVICE_CREDENTIAL.

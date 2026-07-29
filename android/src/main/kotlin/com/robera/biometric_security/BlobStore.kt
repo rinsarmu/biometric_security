@@ -1,4 +1,4 @@
-package com.example.biometric_security
+package com.robera.biometric_security
 
 import android.content.Context
 import android.util.Base64
@@ -8,7 +8,7 @@ import android.util.Base64
  *
  * Blobs are already AES-256-GCM-encrypted by the Dart engine (the DEK is held in
  * the Android Keystore, not here), so this store holds only ciphertext and
- * non-sensitive metadata — never key material (INV-2). It is deliberately kept
+ * non-sensitive metadata — never key material. It is deliberately kept
  * separate from the DEK/key store.
  */
 class BlobStore(context: Context, namespace: String) {

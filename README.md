@@ -5,8 +5,8 @@ biometric-gated encrypted storage, app-lock, and honest availability detection
 for **Android** and **iOS**.
 
 > **Status: 0.1.0 — public beta, not yet production-ready.**
-> The cryptographic design is sound and unit-tested, and an independent audit
-> ([`SECURITY_AUDIT.md`](SECURITY_AUDIT.md)) fixed all high-risk findings — but
+> The cryptographic design is sound and unit-tested, and an independent security
+> review fixed all high-risk findings — but
 > the biometric/Keystore/Secure-Enclave paths have **not yet been validated on
 > physical hardware**, and a few features are still stubs. Use it for pilots and
 > non-critical data; read [Platform limitations](#23-platform-limitations) and
@@ -384,8 +384,6 @@ Future<void> recover() async {
 - **Fail loud.** Corruption → `SecureStorageException`; bad tag →
   `CryptographicException`; invalidation → `KeyInvalidatedException`. Never plaintext.
 
-Full detail: [`ARCHITECTURE.md`](ARCHITECTURE.md), [`STORAGE.md`](STORAGE.md).
-
 ## 20. Threat model
 
 **Protects against:** offline attackers with the device or a backup (secrets are
@@ -395,8 +393,7 @@ enrollment (with `invalidateOnChange`), ciphertext tampering, IV reuse.
 **Does not protect against:** a fully compromised OS/kernel or hardware attack;
 extraction from a rooted/jailbroken device's live process memory; forcing a
 specific modality; making hardware-bound secrets survive device migration.
-Integrity (root/jailbreak) signals are advisory, never guarantees. See
-[`SECURITY_AUDIT.md`](SECURITY_AUDIT.md).
+Integrity (root/jailbreak) signals are advisory, never guarantees.
 
 ## 21. Android details
 
@@ -469,7 +466,7 @@ and the Xcode `RunnerTests` scheme.
 **Does it work on emulators/simulators?** Availability and non-gated storage do.
 Real biometric prompts and Secure Enclave need physical devices.
 
-**Is it production-ready?** Not yet — see the status banner and `SECURITY_AUDIT.md`.
+**Is it production-ready?** Not yet — see the status banner at the top.
 
 ## 27. Security recommendations
 
@@ -480,7 +477,7 @@ Real biometric prompts and Secure Enclave need physical devices.
   recoverable data.
 - Set `android:allowBackup="false"` (or exclude the `bsec.*` prefs) for defense in depth.
 - Test enrollment-change and reinstall flows on real devices before shipping.
-- Read [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) and handle every documented limitation.
+- Review the platform limitations above and handle each one for your use case.
 
 ## 28. License
 

@@ -11,11 +11,7 @@ import '../results.dart';
 import 'platform_interface.dart';
 
 /// Communicates with the host platform over a [MethodChannel] and an
-/// [EventChannel].
-///
-/// In this foundation, only the read-only probes are wired end-to-end; the
-/// native side returns stub data for [initialize] and [getAvailability] and
-/// reports `notImplemented` for anything else.
+/// [EventChannel], translating native error codes into typed exceptions.
 class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
   /// The request/response channel.
   static const MethodChannel methodChannel = MethodChannel(
@@ -258,8 +254,7 @@ class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
 
 /// Maps a native [PlatformException] to a typed [BiometricSecurityException].
 ///
-/// The `code` values here are the contract the native side must emit; they are
-/// documented in `ARCHITECTURE.md` §12.
+/// The `code` values here are the contract that the native implementations emit.
 BiometricSecurityException mapPlatformException(PlatformException e) {
   final message = e.message ?? e.code;
   switch (e.code) {

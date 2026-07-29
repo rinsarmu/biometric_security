@@ -1,4 +1,4 @@
-package com.example.biometric_security
+package com.robera.biometric_security
 
 import android.content.Context
 import android.util.Base64
@@ -11,7 +11,7 @@ import org.json.JSONObject
  * This never stores cryptographic keys — those live exclusively in the Android
  * Keystore (see [KeystoreManager]). Only GCM ciphertext, the GCM IV, the key
  * alias, and non-sensitive metadata are stored here, so plain SharedPreferences
- * is an appropriate container (INV-2 / ARCHITECTURE.md §5).
+ * is an appropriate container.
  */
 class SecureStore(context: Context, namespace: String) {
 
