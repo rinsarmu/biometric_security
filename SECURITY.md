@@ -5,10 +5,12 @@ and appreciate responsible disclosure.
 
 ## Status
 
-**This package is a 0.1.0 public beta and is not yet production-ready.** An
-independent security review fixed all high-risk findings; medium/low items and
-on-device validation remain. Do not use it to protect high-value production
-secrets until those items are complete.
+**This package is a 0.1.0 public beta.** An independent security review fixed all
+high-risk findings, and every implemented flow has been validated on physical
+Android and iOS devices. A few APIs remain stubs (`signChallenge`,
+`enableProtection`/`disableProtection`, `policyOf`, lifecycle-event emission), so
+evaluate those gaps before relying on the package for high-value production
+secrets.
 
 ## Supported versions
 

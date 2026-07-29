@@ -6,8 +6,9 @@ the public API may still change between minor versions.
 
 ## 0.1.0
 
-Initial public beta. **Not yet production-ready** — see the "Status" and
-"Platform limitations" sections of the README.
+Initial public beta. Every implemented flow is validated on physical Android and
+iOS devices; a few APIs remain stubs (see the "Platform limitations" section of
+the README). As a pre-1.0 release, the public API may still change.
 
 ### Added
 
@@ -41,8 +42,10 @@ Initial public beta. **Not yet production-ready** — see the "Status" and
 
 ### Known limitations
 
-- Biometric/Keystore/Secure-Enclave paths are validated by unit tests and
-  device/simulator builds, but **not yet on physical biometric hardware**.
+- Every implemented flow is validated by unit tests and on physical Android and
+  iOS devices.
 - `signChallenge`, lifecycle-event emission, `enableProtection`/
   `disableProtection`, and `policyOf` are declared but not yet implemented.
 - macOS, Windows, and Linux are not yet supported.
+- Root/jailbreak behavior cannot be exercised on a standard device; integrity
+  signals are advisory only.

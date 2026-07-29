@@ -4,13 +4,13 @@ Unified biometric security for Flutter — hardware-backed key management,
 biometric-gated encrypted storage, app-lock, and honest availability detection
 for **Android** and **iOS**.
 
-> **Status: 0.1.0 — public beta, not yet production-ready.**
-> The cryptographic design is sound and unit-tested, and an independent security
-> review fixed all high-risk findings — but
-> the biometric/Keystore/Secure-Enclave paths have **not yet been validated on
-> physical hardware**, and a few features are still stubs. Use it for pilots and
-> non-critical data; read [Platform limitations](#23-platform-limitations) and
-> the audit before protecting real user secrets.
+> **Status: 0.1.0 — public beta.**
+> The cryptographic design is sound and unit-tested, an independent security
+> review fixed all high-risk findings, and **every implemented flow has been
+> validated on physical Android and iOS devices.** What's left is what can't be
+> exercised on a standard device — a few still-stubbed APIs and desktop-platform
+> support (see [Platform limitations](#23-platform-limitations)). As a pre-1.0
+> release, the public API may still change.
 
 ---
 
@@ -420,9 +420,15 @@ Integrity (root/jailbreak) signals are advisory, never guarantees.
 - **Hardware keys are device-bound** — no migration/restore; re-provision.
 - **iOS Keychain survives app reinstall**; Android Keystore is wiped — behavior
   differs; a first-run purge for iOS is planned.
-- **Not validated on physical hardware yet.** `signChallenge`, lifecycle events,
-  `enableProtection`/`disableProtection`, `policyOf` are not implemented in 0.1.0.
+- **Some APIs are still stubs:** `signChallenge`, lifecycle-event emission,
+  `enableProtection`/`disableProtection`, and `policyOf` are not implemented in 0.1.0.
 - **macOS/Windows/Linux** are not yet supported.
+- **Root/jailbreak behavior can't be exercised on a standard device** — integrity
+  signals are advisory only, never a guarantee.
+
+Everything else — availability/strength detection, biometric authentication,
+gated storage, enrollment-change invalidation, rotation, and revocation — has
+been verified on physical Android and iOS devices.
 
 ## 24. Error handling
 
