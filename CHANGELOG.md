@@ -4,7 +4,7 @@ All notable changes to `biometric_security` are documented here. This project
 follows [Semantic Versioning](https://semver.org). Pre-1.0 releases are betas:
 the public API may still change between minor versions.
 
-## 0.1.1
+## 0.1.12
 
 Initial public beta. Every implemented flow is validated on physical Android and
 iOS devices; a few APIs remain stubs (see the "Platform limitations" section of
