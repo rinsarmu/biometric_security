@@ -29,3 +29,11 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 /build/
 /coverage/
+
+# Internal design, research, and audit documents — kept locally, not in the repo.
+/RESEARCH.md
+/ARCHITECTURE.md
+/API_DESIGN.md
+/STORAGE.md
+/SECURITY_AUDIT.md
+/USE_CASE_AUDIT.md
