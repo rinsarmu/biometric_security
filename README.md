@@ -472,7 +472,7 @@ and the Xcode `RunnerTests` scheme.
 **Does it work on emulators/simulators?** Availability and non-gated storage do.
 Real biometric prompts and Secure Enclave need physical devices.
 
-**Is it production-ready?** Not yet — see the status banner at the top.
+
 
 ## 27. Security recommendations
 
