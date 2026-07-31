@@ -10,9 +10,9 @@ import androidx.biometric.BiometricManager.Authenticators
  * Read-only biometric capability detection (availability, supported modalities,
  * strength, secure-hardware presence).
  *
- * Answers the "supported / available" questions of the five-way distinction
- *. Android intentionally does **not** expose *which* modality
- * is enrolled, so [enrolledModalities] is left empty and callers must rely on
+ * Answers the "supported / available" questions of the five-way distinction.
+ * Android intentionally does **not** expose *which* modality is enrolled, so
+ * [enrolledModalities] is left empty and callers must rely on
  * [status] and [strength] to know whether a biometric is enrolled — a documented
  * platform limitation.
  */

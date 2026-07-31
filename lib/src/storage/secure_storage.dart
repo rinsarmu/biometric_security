@@ -100,8 +100,8 @@ class SecureStorage {
   ///
   /// NOT crash-atomic: because a per-secret DEK occupies a single hardware slot,
   /// a process kill between storing the new DEK and writing the re-encrypted
-  /// blob leaves the secret temporarily undecryptable until the caller retries
-  ///. It never leaks or corrupts other secrets.
+  /// blob leaves the secret temporarily undecryptable until the caller retries.
+  /// It never leaks or corrupts other secrets.
   Future<void> rotate({
     required String key,
     required SecurityPolicy policy,

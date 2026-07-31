@@ -4,7 +4,7 @@ Unified biometric security for Flutter — hardware-backed key management,
 biometric-gated encrypted storage, app-lock, and honest availability detection
 for **Android** and **iOS**.
 
-> **Status: 0.1.0 — public beta.**
+> **Status: 0.1.x — public beta.**
 > The cryptographic design is sound and unit-tested, an independent security
 > review fixed all high-risk findings, and **every implemented flow has been
 > validated on physical Android and iOS devices.** What's left is what can't be
@@ -35,7 +35,7 @@ into one `SecurityPolicy`.
 The common Flutter pattern — `local_auth` returns `true`, so unlock the data — is
 **not a security boundary**. On a rooted or hooked device that boolean is
 trivially forged. The real boundary is a key in the Android Keystore / iOS
-Secure Enclave whose *use* requires biometric authentication. Assembling that
+Secure Enclave whose _use_ requires biometric authentication. Assembling that
 correctly (enrollment invalidation, strong-vs-weak biometrics, `biometryCurrentSet`
 vs `biometryAny`, key rotation, safe failure) is where bugs and data loss live.
 This package makes the cryptographic binding the **default**, and fails loudly
@@ -132,7 +132,7 @@ try {
 ```
 
 > For server-verifiable authentication (a signed challenge), `signChallenge()`
-> is planned but **not yet implemented** in 0.1.0. `authenticate()` is a *local*
+> is planned but **not yet implemented** in 0.1.0. `authenticate()` is a _local_
 > gate; check `session.securityLevel` before trusting it for high-value flows.
 
 ## 7. Availability detection
@@ -154,13 +154,13 @@ print(a.hasSecureEnclave);     // iOS Secure Enclave
 The API keeps five distinct concepts separate — conflating them is the #1
 biometric bug:
 
-| Concept | Where | Reliable? |
-|---|---|---|
-| **Supported** (hardware present) | `supportedModalities` | Yes |
-| **Enrolled** (user set up) | `enrolledModalities` | Yes (Android can't enumerate — always empty) |
-| **Available** (usable now) | `canAuthenticate` / `status` | Yes |
-| **Requested** preference | `SecurityPolicy.preferredModality` | **Advisory only** |
-| **Guaranteed** modality | *does not exist* | **Impossible** on both OSes |
+| Concept                          | Where                              | Reliable?                                    |
+| -------------------------------- | ---------------------------------- | -------------------------------------------- |
+| **Supported** (hardware present) | `supportedModalities`              | Yes                                          |
+| **Enrolled** (user set up)       | `enrolledModalities`               | Yes (Android can't enumerate — always empty) |
+| **Available** (usable now)       | `canAuthenticate` / `status`       | Yes                                          |
+| **Requested** preference         | `SecurityPolicy.preferredModality` | **Advisory only**                            |
+| **Guaranteed** modality          | _does not exist_                   | **Impossible** on both OSes                  |
 
 You **cannot force Face ID or fingerprint** — the OS decides.
 `EnforceableGuarantees.canForceSpecificModality` is always `false`.
@@ -293,30 +293,32 @@ has a **Biometric Enrollment** section that drives this test.
 **What the package actually does (default `SecurityPolicy.strong()`):** the key
 protecting a secret is bound to the enrolled biometric set. When that set
 changes, the key is invalidated and the next `read()` throws
-`KeyInvalidatedException` — the package does *not* silently return stale data.
+`KeyInvalidatedException` — the package does _not_ silently return stale data.
 Three distinct things collapse into that one observable:
 
-1. *The biometric set changed* — the OS-level cause.
-2. *The cryptographic key was invalidated* — the platform consequence.
-3. *The protected data can no longer be decrypted* — what your app observes.
+1. _The biometric set changed_ — the OS-level cause.
+2. _The cryptographic key was invalidated_ — the platform consequence.
+3. _The protected data can no longer be decrypted_ — what your app observes.
 
 You detect all three by attempting `read()` and catching `KeyInvalidatedException`.
 There is intentionally no separate "has the set changed?" probe — the key state
 is the source of truth.
 
 **Android** (`setInvalidatedByBiometricEnrollment(true)`, default):
+
 1. Store, then read the protected PIN (succeeds).
 2. Settings → Security → add a **new** fingerprint/face.
 3. Return to the app → **Read Protected PIN** → `KeyInvalidatedException`.
-   Detection happens at cipher init, *before* any prompt is shown.
-> Note: Android invalidates on **new enrollment**; behavior on *removal* varies
-> by OEM.
+   Detection happens at cipher init, _before_ any prompt is shown.
+   > Note: Android invalidates on **new enrollment**; behavior on _removal_ varies
+   > by OEM.
 
 **iOS** (`.biometryCurrentSet`, default):
+
 1. Store, then read the protected PIN (succeeds).
 2. Settings → Face ID & Passcode → **add or remove** a face/fingerprint.
 3. Return to the app → **Read Protected PIN** → `KeyInvalidatedException`.
-   iOS detects the change via the biometric domain-state, *without* a prompt.
+   iOS detects the change via the biometric domain-state, _without_ a prompt.
 
 **Expected result:** "Secure key valid" → `INVALIDATED`, "Protected PIN
 accessible" → `false`.
@@ -434,18 +436,18 @@ been verified on physical Android and iOS devices.
 
 All failures are subtypes of the sealed `BiometricSecurityException`:
 
-| Exception | Meaning |
-|---|---|
-| `BiometricAuthCanceledException` | user dismissed the prompt |
-| `BiometricAuthFailedException` | biometric did not match |
-| `BiometricLockedOutException` | too many attempts (`isPermanent`) |
-| `BiometricUnavailableException` | no hardware / temporarily unavailable |
-| `BiometricNotEnrolledException` | nothing enrolled |
-| `KeyInvalidatedException` | key invalidated by enrollment/lock change |
-| `CryptographicException` | tampered/corrupt ciphertext (no plaintext returned) |
-| `SecureStorageException` | storage/metadata failure |
-| `PolicyUnsupportedException` | device can't satisfy the policy |
-| `UnsupportedPlatformException` | platform not implemented |
+| Exception                        | Meaning                                             |
+| -------------------------------- | --------------------------------------------------- |
+| `BiometricAuthCanceledException` | user dismissed the prompt                           |
+| `BiometricAuthFailedException`   | biometric did not match                             |
+| `BiometricLockedOutException`    | too many attempts (`isPermanent`)                   |
+| `BiometricUnavailableException`  | no hardware / temporarily unavailable               |
+| `BiometricNotEnrolledException`  | nothing enrolled                                    |
+| `KeyInvalidatedException`        | key invalidated by enrollment/lock change           |
+| `CryptographicException`         | tampered/corrupt ciphertext (no plaintext returned) |
+| `SecureStorageException`         | storage/metadata failure                            |
+| `PolicyUnsupportedException`     | device can't satisfy the policy                     |
+| `UnsupportedPlatformException`   | platform not implemented                            |
 
 ## 25. Testing
 
@@ -462,7 +464,7 @@ and the Xcode `RunnerTests` scheme.
 ## 26. FAQ
 
 **Can I force Face ID / fingerprint?** No — neither OS allows it. You can require
-*strength* (Android) and present appropriate UI.
+_strength_ (Android) and present appropriate UI.
 
 **Do I have to `await initialize()`?** Yes, once, before anything else.
 
@@ -471,8 +473,6 @@ and the Xcode `RunnerTests` scheme.
 
 **Does it work on emulators/simulators?** Availability and non-gated storage do.
 Real biometric prompts and Secure Enclave need physical devices.
-
-
 
 ## 27. Security recommendations
 

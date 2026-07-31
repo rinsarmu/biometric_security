@@ -4,6 +4,12 @@ All notable changes to `biometric_security` are documented here. This project
 follows [Semantic Versioning](https://semver.org). Pre-1.0 releases are betas:
 the public API may still change between minor versions.
 
+## 0.1.13
+
+- Fixed the `homepage`/`repository`/`issue_tracker` URLs (they pointed at a
+  non-existent GitHub account, so the pub.dev "Repository" link 404'd).
+- Cleaned up the README status banner.
+
 ## 0.1.12
 
 Initial public beta. Every implemented flow is validated on physical Android and
