@@ -1,6 +1,6 @@
 name: biometric_security
-description: "Unified biometric security for Flutter: hardware-backed key management, biometric-gated encrypted storage, app-lock, and availability detection on Android and iOS."
-version: 0.1.13
+description: "Biometric security for Flutter: Face ID, Touch ID & fingerprint authentication with hardware-backed encrypted storage and app-lock, on Android and iOS."
+version: 0.1.14
 homepage: https://github.com/rinsarmu/biometric_security
 repository: https://github.com/rinsarmu/biometric_security
 issue_tracker: https://github.com/rinsarmu/biometric_security/issues

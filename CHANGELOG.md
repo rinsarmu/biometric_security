@@ -4,6 +4,13 @@ All notable changes to `biometric_security` are documented here. This project
 follows [Semantic Versioning](https://semver.org). Pre-1.0 releases are betas:
 the public API may still change between minor versions.
 
+## 0.1.14
+
+- Improved pub.dev discoverability: keyword-rich package description and README
+  opening (Face ID, Touch ID, fingerprint, Keystore, Keychain, Secure Enclave),
+  pub.dev badges, and a "how it compares" table vs `local_auth` /
+  `flutter_secure_storage`.
+
 ## 0.1.13
 
 - Fixed the `homepage`/`repository`/`issue_tracker` URLs (they pointed at a

@@ -1,8 +1,18 @@
 # biometric_security
 
-Unified biometric security for Flutter — hardware-backed key management,
-biometric-gated encrypted storage, app-lock, and honest availability detection
-for **Android** and **iOS**.
+[![pub package](https://img.shields.io/pub/v/biometric_security.svg)](https://pub.dev/packages/biometric_security)
+[![pub points](https://img.shields.io/pub/points/biometric_security)](https://pub.dev/packages/biometric_security/score)
+[![likes](https://img.shields.io/pub/likes/biometric_security)](https://pub.dev/packages/biometric_security/score)
+[![platform](https://img.shields.io/badge/platform-android%20%7C%20ios-blue.svg)](https://pub.dev/packages/biometric_security)
+[![license: BSD-3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
+
+Biometric authentication and secure, hardware-backed encrypted storage for
+Flutter — **Face ID**, **Touch ID**, and **fingerprint** (Android
+`BiometricPrompt`, iOS `LocalAuthentication`), with biometric-gated secret
+storage backed by the Android **Keystore** and iOS **Keychain / Secure
+Enclave**, plus app-lock, key rotation/revocation, and honest availability
+detection for **Android** and **iOS**. A safer, higher-level alternative to
+wiring `local_auth` and `flutter_secure_storage` together by hand.
 
 > **Status: 0.1.x — public beta.**
 > The cryptographic design is sound and unit-tested, an independent security
@@ -40,6 +50,22 @@ correctly (enrollment invalidation, strong-vs-weak biometrics, `biometryCurrentS
 vs `biometryAny`, key rotation, safe failure) is where bugs and data loss live.
 This package makes the cryptographic binding the **default**, and fails loudly
 instead of silently returning plaintext.
+
+### How it compares
+
+`biometric_security` combines and hardens what you'd otherwise wire up from
+`local_auth` + `flutter_secure_storage`:
+
+| Capability | `local_auth` | `flutter_secure_storage` | **biometric_security** |
+| --- | :---: | :---: | :---: |
+| Show the biometric prompt (Face ID / Touch ID / fingerprint) | ✅ | — | ✅ |
+| Result is a real hardware key operation, not just `true` | ❌ boolean | — | ✅ |
+| Encrypted secret storage (AES-256-GCM) | — | ✅ | ✅ |
+| Read is **gated** by biometrics (not only encrypted at rest) | — | ⚠️ coarse | ✅ |
+| Enrollment-change **invalidation** surfaced to your app | ❌ | ⚠️ opaque | ✅ typed exception |
+| Key **rotation** and **revocation** | — | — | ✅ |
+| App-lock & feature-level gating | — | — | ✅ |
+| One normalized `SecurityPolicy` across Android & iOS | — | — | ✅ |
 
 ## 3. Key features
 
