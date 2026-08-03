@@ -91,6 +91,15 @@ final class KeychainStore {
         readMeta(key: key) != nil
     }
 
+    /// Whether the biometric-bound entry for `key` has been invalidated by an
+    /// enrollment change, checked via the stored biometric domain-state without
+    /// prompting. `false` for a missing or non-gated entry.
+    func isKeyInvalidated(key: String) -> Bool {
+        guard let meta = readMeta(key: key), meta.gated, meta.invalidateOnEnrollment
+        else { return false }
+        return meta.domainState != Self.currentDomainState()
+    }
+
     func keys() -> [String] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

@@ -110,6 +110,7 @@ class BiometricSecurityPlugin:
                 "revoke" -> handleRevoke(call, result)
                 "revokeAll" -> handleRevokeAll(result)
                 "resetInvalidated" -> handleResetInvalidated(call, result)
+                "isKeyInvalidated" -> result.success(handleIsKeyInvalidated(call))
                 "blobPut" -> handleBlobPut(call, result)
                 "blobGet" -> result.success(blobStore().get(requireKey(call)))
                 "blobDelete" -> { blobStore().remove(requireKey(call)); result.success(null) }
@@ -330,6 +331,23 @@ class BiometricSecurityPlugin:
             ?: throw PluginException(SecurityCodes.STORAGE_ERROR, "Missing blob.")
         blobStore().put(requireKey(call), blob)
         result.success(null)
+    }
+
+    /**
+     * Non-prompting invalidation check: building the decrypt cipher runs
+     * `Cipher.init`, which throws `KeyPermanentlyInvalidatedException` (mapped to
+     * KEY_INVALIDATED) for a dead key without ever showing a biometric prompt.
+     */
+    private fun handleIsKeyInvalidated(call: MethodCall): Boolean {
+        val key = requireKey(call)
+        val blob = store().get(key) ?: return false
+        if (!blob.gated) return false
+        return try {
+            keystore.decryptCipher(blob.alias, blob.iv)
+            false
+        } catch (e: PluginException) {
+            e.code == SecurityCodes.KEY_INVALIDATED
+        }
     }
 
     private fun store(): SecureStore = SecureStore(appContext, namespace)

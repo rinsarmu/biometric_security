@@ -6,6 +6,10 @@ the public API may still change between minor versions.
 
 ## 0.1.14
 
+- Added `isInvalidated(key:)` — a lightweight, non-prompting boolean check for
+  whether a secret's biometric-bound key was invalidated (e.g. by an
+  enrollment change). Android uses a `Cipher.init` probe; iOS uses the biometric
+  domain-state. Returns `false` for absent or non-gated secrets.
 - Improved pub.dev discoverability: keyword-rich package description and README
   opening (Face ID, Touch ID, fingerprint, Keystore, Keychain, Secure Enclave),
   pub.dev badges, and a "how it compares" table vs `local_auth` /

@@ -45,6 +45,10 @@ class FakeKeyVault implements KeyVault {
   Future<void> destroyAll() async {
     deks.clear();
   }
+
+  @override
+  Future<bool> isInvalidated({required String id}) async =>
+      invalidated.contains(id);
 }
 
 /// In-memory [BlobStore] for tests.

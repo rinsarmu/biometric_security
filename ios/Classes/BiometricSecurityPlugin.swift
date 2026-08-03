@@ -79,6 +79,8 @@ public class BiometricSecurityPlugin: NSObject, FlutterPlugin, FlutterStreamHand
                 // rather than being a silent no-op.
                 auth.reset(scope: (args?["scope"] as? String) ?? "default")
                 result(nil)
+            case "isKeyInvalidated":
+                result(store.isKeyInvalidated(key: try requireKey(args)))
             case "blobPut":
                 guard let data = (args?["blob"] as? FlutterStandardTypedData)?.data else {
                     throw PluginError(SecurityCodes.storageError, "Missing blob.")

@@ -73,6 +73,10 @@ class SecureStorage {
 
   Future<bool> containsKey(String key) async => (await _blobs.get(key)) != null;
 
+  /// Whether the biometric-bound key protecting [key] has been invalidated.
+  /// Does not prompt; `false` when the secret is absent or not gated.
+  Future<bool> isInvalidated(String key) => _vault.isInvalidated(id: key);
+
   /// Removes a secret and destroys its DEK (with a per-secret DEK, deleting the
   /// data already makes it cryptographically unrecoverable).
   Future<void> delete(String key) => _locked(key, () => _delete(key));

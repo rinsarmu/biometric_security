@@ -190,6 +190,15 @@ void main() {
       expect(caught, isA<KeyInvalidatedException>());
     });
 
+    test('isInvalidated is a non-prompting boolean probe', () async {
+      await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);
+      expect(await storage.isInvalidated('a'), isFalse);
+      vault.invalidated.add('a');
+      expect(await storage.isInvalidated('a'), isTrue);
+      // Absent key is not "invalidated".
+      expect(await storage.isInvalidated('ghost'), isFalse);
+    });
+
     test('recovery: reprovision after invalidation restores access', () async {
       // 1. Store and confirm readable.
       await storage.write(key: 'a', value: _bytes('AAA'), policy: policy);

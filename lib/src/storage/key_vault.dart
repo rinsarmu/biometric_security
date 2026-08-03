@@ -38,6 +38,10 @@ abstract class KeyVault {
 
   /// Destroys every DEK in the namespace.
   Future<void> destroyAll();
+
+  /// Whether the biometric-bound key for [id] has been invalidated. Does not
+  /// prompt. Returns `false` for a missing or non-gated entry.
+  Future<bool> isInvalidated({required String id});
 }
 
 /// Production [KeyVault] backed by the native secure storage of the platform.
@@ -84,5 +88,10 @@ class PlatformKeyVault implements KeyVault {
   @override
   Future<void> destroyAll() {
     return _platform.revokeAll();
+  }
+
+  @override
+  Future<bool> isInvalidated({required String id}) {
+    return _platform.isKeyInvalidated(key: _key(id));
   }
 }

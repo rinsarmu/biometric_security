@@ -205,6 +205,21 @@ void main() {
       expect(await security.contains(key: const SecretKey('a')), isFalse);
     });
 
+    test('isInvalidated returns a boolean without prompting', () async {
+      await security.initialize();
+      await security.write(key: const SecretKey('pin'), value: '1');
+      expect(
+        await security.isInvalidated(key: const SecretKey('pin')),
+        isFalse,
+      );
+      vault.invalidated.add('pin');
+      expect(await security.isInvalidated(key: const SecretKey('pin')), isTrue);
+      expect(
+        await security.isInvalidated(key: const SecretKey('none')),
+        isFalse,
+      );
+    });
+
     test('authenticate delegates and passes the scope', () async {
       await security.initialize();
       final session = await security.authenticate(

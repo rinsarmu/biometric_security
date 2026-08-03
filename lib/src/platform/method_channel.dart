@@ -201,6 +201,18 @@ class MethodChannelBiometricSecurity extends BiometricSecurityPlatform {
   }
 
   @override
+  Future<bool> isKeyInvalidated({required String key}) async {
+    try {
+      return await methodChannel.invokeMethod<bool>('isKeyInvalidated', {
+            'key': key,
+          }) ??
+          false;
+    } on PlatformException catch (e) {
+      throw mapPlatformException(e);
+    }
+  }
+
+  @override
   Future<void> blobPut({required String key, required Uint8List blob}) async {
     try {
       await methodChannel.invokeMethod<void>('blobPut', {

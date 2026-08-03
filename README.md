@@ -371,6 +371,19 @@ try {
 }
 ```
 
+You can also check invalidation **up front, without prompting** — handy before
+showing a login button:
+
+```dart
+if (await security.isInvalidated(key: const SecretKey('payment_pin'))) {
+  await security.revoke(key: const SecretKey('payment_pin')); // clear the dead secret
+  // ...ask the user to enable biometric login again
+}
+```
+
+`isInvalidated` returns a plain `bool`, never shows a biometric dialog, and is
+`false` for secrets that don't exist or aren't biometric-gated.
+
 ## 17. Revocation
 
 ```dart

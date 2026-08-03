@@ -187,6 +187,27 @@ class BiometricSecurity {
     return _storage.containsKey(key.value);
   }
 
+  /// Whether the biometric-bound key protecting [key] has been **invalidated**
+  /// (e.g. by a biometric-enrollment change or the device lock being removed).
+  ///
+  /// This is a lightweight, **non-prompting** check — it never shows a biometric
+  /// dialog and never returns the secret. Returns `false` when [key] does not
+  /// exist or was stored without a biometric gate (`SecurityPolicy.encryptedOnly`).
+  ///
+  /// Use it to decide, before showing a login prompt, whether the user must
+  /// re-enable biometric protection:
+  ///
+  /// ```dart
+  /// if (await security.isInvalidated(key: pin)) {
+  ///   await security.revoke(key: pin); // clear the dead secret
+  ///   // ...ask the user to enable biometric login again
+  /// }
+  /// ```
+  Future<bool> isInvalidated({required SecretKey key}) {
+    _requireInitialized();
+    return _storage.isInvalidated(key.value);
+  }
+
   /// All stored keys (metadata only; no decryption, no prompt). Internal
   /// bookkeeping keys (e.g. the app-lock marker) are excluded.
   Future<Set<SecretKey>> keys() async {

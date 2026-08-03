@@ -119,6 +119,12 @@ abstract class BiometricSecurityPlatform extends PlatformInterface {
     throw UnimplementedError('resetInvalidated() has not been implemented.');
   }
 
+  /// Whether the biometric-bound key stored under [key] has been invalidated,
+  /// checked without prompting the user.
+  Future<bool> isKeyInvalidated({required String key}) {
+    throw UnimplementedError('isKeyInvalidated() has not been implemented.');
+  }
+
   // --- Opaque ciphertext-blob persistence (non-gated; no key material) ---
 
   /// Stores an opaque encrypted [blob] under [key].
